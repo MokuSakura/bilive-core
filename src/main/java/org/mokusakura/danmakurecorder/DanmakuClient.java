@@ -2,6 +2,7 @@ package org.mokusakura.danmakurecorder;
 
 import org.mokusakura.danmakurecorder.event.DanmakuClientClosedEvent;
 import org.mokusakura.danmakurecorder.event.DanmakuReceivedEvent;
+import org.mokusakura.danmakurecorder.event.LiveStreamBeginEvent;
 
 import java.io.Closeable;
 import java.util.Collection;
@@ -16,6 +17,9 @@ public interface DanmakuClient extends Closeable {
 
     Collection<Consumer<DanmakuClientClosedEvent>> danmakuClientClosedHandlers();
 
+    Collection<Consumer<LiveStreamBeginEvent>> liveBeginHandlers();
+
+    void addLiveBeginHandler(Consumer<LiveStreamBeginEvent> consumer);
 
     void addReceivedHandlers(Consumer<DanmakuReceivedEvent> consumer);
 

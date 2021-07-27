@@ -6,19 +6,23 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.mokusakura.danmakurecorder.event.DanmakuClientClosedEvent;
 import org.mokusakura.danmakurecorder.event.DanmakuReceivedEvent;
+import org.mokusakura.danmakurecorder.event.LiveStreamBeginEvent;
 import org.mokusakura.danmakurecorder.model.RoomInfo;
 import org.mokusakura.danmakurecorder.model.RoomInit;
+import org.mokusakura.danmakurecorder.websocket.ActionType;
+import org.mokusakura.danmakurecorder.websocket.ProtocolVersion;
+import org.mokusakura.danmakurecorder.websocket.WebSocketHeader;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 /**
  * @author MokuSakura
@@ -26,8 +30,10 @@ import java.util.function.Consumer;
 @Slf4j
 public class SocketDanmakuClient extends WebSocketClient implements DanmakuClient {
     public static final int HEADER_SIZE = 16;
+    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
     private final Set<Consumer<DanmakuClientClosedEvent>> danmakuClosedHandlers;
+    private final Set<Consumer<LiveStreamBeginEvent>> liveBeginHandlers;
     private final RoomInfo roomInfo;
     private final RoomInit roomInit;
     private final URI uri;
@@ -40,16 +46,28 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         this.uri = uri;
         this.roomInit = roomInit;
         this.roomInfo = roomInfo;
+        messageHandlers = new HashMap<>();
+        messageHandlers.put(ProtocolVersion.PureJson, this::handlePureJson);
+        messageHandlers.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
         timer = new ScheduledThreadPoolExecutor(10, (ThreadFactory) Thread::new);
         danmakuReceivedHandlers = new LinkedHashSet<>();
         danmakuClosedHandlers = new LinkedHashSet<>();
+        liveBeginHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(10, 10, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
         try {
             super.connectBlocking();
+            log.info("Connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),
+                     roomInit.getShortId());
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        //FIXME Why always false here?
+//        if (super.isConnecting()) {
+//            log.info("Connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),roomInit.getShortId());
+//        } else {
+//            log.error("Fail to connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),roomInit.getShortId());
+//        }
     }
 
     @Override
@@ -73,6 +91,16 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
+    public Collection<Consumer<LiveStreamBeginEvent>> liveBeginHandlers() {
+        return liveBeginHandlers;
+    }
+
+    @Override
+    public void addLiveBeginHandler(Consumer<LiveStreamBeginEvent> consumer) {
+        liveBeginHandlers.add(consumer);
+    }
+
+    @Override
     public void onOpen(ServerHandshake serverHandshake) {
         try {
             sendHelloAsync().get();
@@ -81,26 +109,29 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
-        if (super.isConnecting()) {
-            log.info("Connect to {}:{} of Room {}", uri.getHost(), uri.getPort(), roomInit.getRoomId());
-        } else {
-            log.error("Fail to connect to {}:{} of Room {}", uri.getHost(), uri.getPort(), roomInit.getRoomId());
-        }
+    }
+
+
+    @Override
+    public void onMessage(ByteBuffer bytes) {
+//        log.debug(new String(bytes.array(),StandardCharsets.UTF_8));
+        //FIXME Now the whole data package may contains more than one header-body data.
+        //Meaning I may get something like [header,body,header.body...]
+        //Need to find a way to solve this.
+        var decodedHeader = WebSocketHeader.newInstance(bytes.array(), true);
+        var handler = messageHandlers.get(decodedHeader.getProtocolVersion());
+        Objects.requireNonNullElse(handler, (a, b) -> {}).accept(decodedHeader, bytes);
     }
 
     @Override
     public void onMessage(String s) {
-        onMessage(ByteBuffer.wrap(s.getBytes()));
+        onMessage(ByteBuffer.wrap(s.getBytes(StandardCharsets.UTF_8)));
     }
-
-    @Override
-    public void onMessage(ByteBuffer bytes) {
-    }
-
 
     @Override
     public void onClose(int i, String s, boolean b) {
         log.info("Connection to {}:{} of Room {} is closed", uri.getHost(), uri.getPort(), roomInit.getRoomId());
+        this.timer.shutdownNow();
         DanmakuClientClosedEvent event = new DanmakuClientClosedEvent(this, this.uri, this.roomInfo, this.roomInit);
         for (var consumer : danmakuClosedHandlers) {
             threadPoolExecutor.execute(() -> consumer.accept(event));
@@ -109,50 +140,72 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
 
     @Override
     public void onError(Exception e) {
+        log.error(e.getMessage());
         log.error(Arrays.toString(e.getStackTrace()));
         log.debug("error");
+        this.close();
     }
 
-    private Future<Boolean> sendHelloAsync() {
+    protected Future<Boolean> sendHelloAsync() {
         JSONObject body = new JSONObject();
         body.put("uid", 0);
         body.put("roomid", roomInit.getRoomId());
-        body.put("protover", 1);
+        body.put("protover", 0);
         body.put("platform", "web");
-        body.put("clientver", "1.4.0");
+        body.put("clientver", "2.6.25");
         body.put("type", 2);
-        return sendMessageAsync(SendActionType.Hello, body.toJSONString());
+        return sendMessageAsync(ActionType.Hello, body.toJSONString());
     }
 
-    private Future<Boolean> sendHeartBeanAsync() {
-        return sendMessageAsync(SendActionType.HeartBeat, "");
+    protected Future<Boolean> sendHeartBeanAsync() {
+        return sendMessageAsync(ActionType.HeartBeat, "");
     }
 
-    private Future<Boolean> sendMessageAsync(SendActionType actionType, String body) {
+    protected Future<Boolean> sendMessageAsync(ActionType actionType, String body) {
         return threadPoolExecutor.submit(() -> {
             log.debug("send " + actionType.name());
-            var payload =
-                    body == null ? "".getBytes(StandardCharsets.UTF_8) : body.getBytes(StandardCharsets.UTF_8);
+            String cbody = body == null ? "" : body;
+            var payload = cbody.getBytes(StandardCharsets.UTF_8);
             var size = payload.length + HEADER_SIZE;
-            var headBuffer = ByteBuffer.allocate(16);
             var outputStream = new ByteArrayOutputStream();
-            // Head information
-            // 0-3 size
-            // 4-5 unknown always 16
-            // 6-7 unknown always 1
-            // 8-11 action type
-            // 12-15 unknown always 1
-            headBuffer.putInt(0, size);
-            headBuffer.putShort(4, (short) 16);
-            headBuffer.putShort(6, (short) 1);
-            headBuffer.putInt(8, actionType.getValue());
-            headBuffer.putInt(12, 1);
-            outputStream.write(headBuffer.array());
+            WebSocketHeader header = WebSocketHeader.newInstance(size, ProtocolVersion.ClientSend, actionType);
+            outputStream.write(header.array());
             outputStream.write(payload);
-            send(outputStream.toByteArray());
+            super.send(outputStream.toByteArray());
             return true;
         });
 
     }
 
+    protected void handlePureJson(WebSocketHeader header, ByteBuffer byteBuffer) {
+        log.debug(new String(byteBuffer.array()));
+        var length = header.getTotalLength() - header.getHeaderLength();
+        assert length <= Integer.MAX_VALUE;
+        var data = byteBuffer.array();
+        var bodyData = Arrays.copyOfRange(data, WebSocketHeader.BODY_OFFSET, data.length);
+        var json = new String(bodyData, StandardCharsets.UTF_8);
+//        log.debug(json);
+    }
+
+    protected void handleCompressedData(WebSocketHeader header, ByteBuffer byteBuffer) {
+        var compressedData = byteBuffer.array();
+        Inflater inflater = new Inflater();
+        long length = header.getTotalLength() - header.getHeaderLength();
+        assert length <= Integer.MAX_VALUE;
+        byte[] buffer = new byte[1024];
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        inflater.setInput(compressedData, WebSocketHeader.BODY_OFFSET,
+                          compressedData.length - header.getHeaderLength());
+        int infalteLength = 0;
+        try {
+            while ((infalteLength = inflater.inflate(buffer, 0, buffer.length)) != 0) {
+                baos.write(buffer, 0, infalteLength);
+            }
+            inflater.end();
+        } catch (DataFormatException e) {
+            log.error(e.getMessage());
+            return;
+        }
+        handlePureJson(header, ByteBuffer.wrap(baos.toByteArray()));
+    }
 }
