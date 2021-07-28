@@ -55,5 +55,13 @@ public class DanmakuServerInfo {
             this.port = port;
             return this;
         }
+
+        @Override
+        public String toString() {
+            return "HostListItem{" +
+                    "host='" + host + '\'' +
+                    ", port=" + port +
+                    '}';
+        }
     }
 }

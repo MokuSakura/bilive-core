@@ -26,8 +26,12 @@ import java.util.zip.Inflater;
 
 /**
  * @author MokuSakura
+ * <p>
+ *     This is not completed yet.
+ * </p>
  */
 @Slf4j
+@Deprecated
 public class SocketDanmakuClient extends WebSocketClient implements DanmakuClient {
     public static final int HEADER_SIZE = 16;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
@@ -55,19 +59,6 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         liveBeginHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(10, 10, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
-        try {
-            super.connectBlocking();
-            log.info("Connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),
-                     roomInit.getShortId());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        //FIXME Why always false here?
-//        if (super.isConnecting()) {
-//            log.info("Connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),roomInit.getShortId());
-//        } else {
-//            log.error("Fail to connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),roomInit.getShortId());
-//        }
     }
 
     @Override
@@ -98,6 +89,31 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     @Override
     public void addLiveBeginHandler(Consumer<LiveStreamBeginEvent> consumer) {
         liveBeginHandlers.add(consumer);
+    }
+
+    @Override
+    public void connect(int roomId) {
+        if (!roomInit.getRoomId().equals(roomId)) {
+            throw new IllegalArgumentException();
+        }
+        try {
+            super.connectBlocking();
+            log.info("Connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),
+                     roomInit.getShortId());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        //FIXME Why always false here?
+//        if (super.isConnecting()) {
+//            log.info("Connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),roomInit.getShortId());
+//        } else {
+//            log.error("Fail to connect to {}:{} of Room {}, short id {}", uri.getHost(), uri.getPort(), roomInit.getRoomId(),roomInit.getShortId());
+//        }
+    }
+
+    @Override
+    public void disconnect() {
+
     }
 
     @Override
@@ -184,7 +200,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         var data = byteBuffer.array();
         var bodyData = Arrays.copyOfRange(data, WebSocketHeader.BODY_OFFSET, data.length);
         var json = new String(bodyData, StandardCharsets.UTF_8);
-//        log.debug(json);
+        log.debug(json);
     }
 
     protected void handleCompressedData(WebSocketHeader header, ByteBuffer byteBuffer) {
@@ -196,10 +212,10 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         inflater.setInput(compressedData, WebSocketHeader.BODY_OFFSET,
                           compressedData.length - header.getHeaderLength());
-        int infalteLength = 0;
+        int inflateLength = 0;
         try {
-            while ((infalteLength = inflater.inflate(buffer, 0, buffer.length)) != 0) {
-                baos.write(buffer, 0, infalteLength);
+            while ((inflateLength = inflater.inflate(buffer, 0, buffer.length)) != 0) {
+                baos.write(buffer, 0, inflateLength);
             }
             inflater.end();
         } catch (DataFormatException e) {

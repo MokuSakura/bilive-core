@@ -144,12 +144,13 @@ public class HttpDanmakuApiClient implements BilibiliApiClient, Closeable {
             }
             var request = HttpRequest.newBuilder()
                     .GET()
-                    .uri(new URI("http://" + BILIBILI_LIVE_API_HOST + path))
+                    .uri(new URI("https://" + BILIBILI_LIVE_API_HOST + path))
                     .header("Accept", HEADER_ACCEPT)
                     .header("Origin", HEADER_ORIGIN)
                     .header("Referer", HEADER_REFERER)
                     .header("User-Agent", HEADER_USER_AGENT)
                     .build();
+            log.debug(request.uri().toString());
             var response = httpClient.send(request,
                                            HttpResponse.BodyHandlers.ofString());
             var res = JSONObject.parseObject(response.body(),

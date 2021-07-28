@@ -71,19 +71,23 @@ public class WebSocketHeader {
         var actionInt = byteBuffer.getInt(ACTION_OFFSET);
         var sequence = byteBuffer.getInt(SEQUENCE_OFFSET);
         ProtocolVersion protocolVersion;
-        switch (protocolVersionShort) {
-            case 0:
-                protocolVersion = ProtocolVersion.PureJson;
-                break;
-            case 1:
-                protocolVersion = ProtocolVersion.Popularity;
-                break;
-            case 2:
-                protocolVersion = ProtocolVersion.CompressedBuffer;
-                break;
-            //TODO It seems another protocol version is used by Bilibili now.
-            default:
-                protocolVersion = ProtocolVersion.Default;
+        if (fromServer) {
+            switch (protocolVersionShort) {
+                case 0:
+                    protocolVersion = ProtocolVersion.PureJson;
+                    break;
+                case 1:
+                    protocolVersion = ProtocolVersion.Popularity;
+                    break;
+                case 2:
+                    protocolVersion = ProtocolVersion.CompressedBuffer;
+                    break;
+                //TODO It seems another protocol version is used by Bilibili now.
+                default:
+                    throw new RuntimeException("Unknown Protocol Version");
+            }
+        } else {
+            protocolVersion = ProtocolVersion.Default;
         }
         ActionType actionType;
         switch (actionInt) {
@@ -103,8 +107,7 @@ public class WebSocketHeader {
                 actionType = ActionType.EnterRoom;
                 break;
             default:
-                actionType = ActionType.Default;
-                break;
+                throw new RuntimeException("Unknown ActionType");
         }
         return new WebSocketHeader(totalLength, headerLength, protocolVersion, actionType, sequence);
     }
