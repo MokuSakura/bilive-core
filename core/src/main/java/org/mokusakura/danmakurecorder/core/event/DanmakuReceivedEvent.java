@@ -6,14 +6,38 @@ import org.mokusakura.danmakurecorder.core.model.DanmakuModelBase;
  * @author MokuSakura
  */
 public class DanmakuReceivedEvent {
-    private DanmakuModelBase danmakuModel;
+    private String danmakuJson;
+    private DanmakuModelBase danmakuModelBase;
 
-    public DanmakuModelBase getDanmakuModel() {
-        return danmakuModel;
+    public DanmakuReceivedEvent() {
     }
 
-    public DanmakuReceivedEvent setDanmakuModel(DanmakuModelBase danmakuModel) {
-        this.danmakuModel = danmakuModel;
+
+    public String getDanmakuRaw() {
+        return danmakuJson;
+    }
+
+    public DanmakuReceivedEvent setDanmakuRaw(String danmakuJson) {
+        this.danmakuJson = danmakuJson;
+        return this;
+    }
+
+    public String getDanmakuJson() {
+        return danmakuJson;
+    }
+
+    public DanmakuReceivedEvent setDanmakuJson(String danmakuJson) {
+        this.danmakuJson = danmakuJson;
+        return this;
+    }
+
+    public DanmakuModelBase getDanmakuModelBase() {
+        return danmakuModelBase;
+    }
+
+    public DanmakuReceivedEvent setDanmakuModelBase(
+            DanmakuModelBase danmakuModelBase) {
+        this.danmakuModelBase = danmakuModelBase;
         return this;
     }
 }

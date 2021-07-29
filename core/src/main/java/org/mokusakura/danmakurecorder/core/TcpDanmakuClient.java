@@ -3,8 +3,8 @@ package org.mokusakura.danmakurecorder.core;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.mokusakura.danmakurecorder.core.api.BilibiliApiClient;
-import org.mokusakura.danmakurecorder.core.event.DanmakuClientClosedEvent;
 import org.mokusakura.danmakurecorder.core.event.DanmakuReceivedEvent;
+import org.mokusakura.danmakurecorder.core.event.LiveEndEvent;
 import org.mokusakura.danmakurecorder.core.event.LiveStreamBeginEvent;
 import org.mokusakura.danmakurecorder.core.exception.NoNetworkConnectionException;
 import org.mokusakura.danmakurecorder.core.exception.NoRoomFoundException;
@@ -38,11 +38,13 @@ public class TcpDanmakuClient implements DanmakuClient {
     private final ScheduledExecutorService timer;
     private final BilibiliApiClient apiClient;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<DanmakuClientClosedEvent>> danmakuClosedHandlers;
+    private final Set<Consumer<LiveEndEvent>> danmakuClosedHandlers;
     private final Set<Consumer<LiveStreamBeginEvent>> liveBeginHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
     private final Lock lock;
+    private DanmakuServerInfo.HostListItem hostListItem;
+    private boolean closed;
     private Socket socket;
     private RoomInit roomInit;
     private DanmakuServerInfo danmakuServerInfo;
@@ -58,6 +60,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
         messageHandlers = new LinkedHashMap<>();
         lock = new ReentrantLock();
+        closed = true;
         messageHandlers.put(ProtocolVersion.PureJson, this::handlePureJson);
         messageHandlers.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
     }
@@ -68,7 +71,7 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public Collection<Consumer<DanmakuClientClosedEvent>> danmakuClientClosedHandlers() {
+    public Collection<Consumer<LiveEndEvent>> liveEndHandlers() {
         return danmakuClosedHandlers;
     }
 
@@ -88,7 +91,7 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public void addClosedHandlers(Consumer<DanmakuClientClosedEvent> consumer) {
+    public void addLiveEndHandlers(Consumer<LiveEndEvent> consumer) {
         danmakuClosedHandlers.add(consumer);
     }
 
@@ -96,17 +99,18 @@ public class TcpDanmakuClient implements DanmakuClient {
     public void connect(int roomId) throws NoNetworkConnectionException, NoRoomFoundException {
         try {
             lock.lock();
-            if (socket != null) {
+            if (!closed) {
                 return;
             }
+            closed = false;
             this.roomInit = apiClient.getRoomInit(roomId).getData();
             danmakuServerInfo = apiClient.getDanmakuServerInfo(roomInit.getRoomId()).getData();
             var hostListItems = Arrays.stream(danmakuServerInfo.getHostList())
                     .filter(hostListItem -> hostListItem.getHost() != null && hostListItem.getPort() != null)
                     .toArray(DanmakuServerInfo.HostListItem[]::new);
-
-            var host = hostListItems[0].getHost();
-            var port = hostListItems[0].getPort();
+            hostListItem = hostListItems[0];
+            var host = hostListItem.getHost();
+            var port = hostListItem.getPort();
             try {
                 // Connection is setup here
                 socket = new Socket(host, port);
@@ -132,9 +136,22 @@ public class TcpDanmakuClient implements DanmakuClient {
     public void disconnect() {
         try {
             lock.lock();
-            socket.close();
-            inputStream.close();
-            outputStream.close();
+            if (closed) {
+                return;
+            }
+            closed = true;
+            log.info("Disconnect from {}:{} Room id {}, short id {}", hostListItem.getHost(), hostListItem.getPort(),
+                     roomInit.getRoomId(), roomInit.getShortId());
+            if (socket != null) {
+                socket.close();
+            }
+            if (inputStream != null) {
+                inputStream.close();
+            }
+            if (outputStream != null) {
+                outputStream.close();
+            }
+
         } catch (IOException e) {
             log.error("Error closing DanmakuClient");
             log.error(e.getMessage());
@@ -155,7 +172,11 @@ public class TcpDanmakuClient implements DanmakuClient {
 
     protected void handlePureJson(WebSocketHeader header, ByteBuffer byteBuffer) {
         var json = new String(byteBuffer.array(), StandardCharsets.UTF_8);
-        log.debug(json);
+        //TODO Deserialize here
+        threadPoolExecutor.submit(
+                () -> danmakuReceivedHandlers.forEach(
+                        (action) -> action.accept(new DanmakuReceivedEvent().setDanmakuRaw(json))));
+
     }
 
     protected void handleCompressedData(WebSocketHeader header, ByteBuffer byteBuffer) {

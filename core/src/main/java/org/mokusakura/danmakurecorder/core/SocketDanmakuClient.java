@@ -4,8 +4,8 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import org.mokusakura.danmakurecorder.core.event.DanmakuClientClosedEvent;
 import org.mokusakura.danmakurecorder.core.event.DanmakuReceivedEvent;
+import org.mokusakura.danmakurecorder.core.event.LiveEndEvent;
 import org.mokusakura.danmakurecorder.core.event.LiveStreamBeginEvent;
 import org.mokusakura.danmakurecorder.core.model.RoomInfo;
 import org.mokusakura.danmakurecorder.core.model.RoomInit;
@@ -35,7 +35,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     public static final int HEADER_SIZE = 16;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<DanmakuClientClosedEvent>> danmakuClosedHandlers;
+    private final Set<Consumer<LiveEndEvent>> danmakuClosedHandlers;
     private final Set<Consumer<LiveStreamBeginEvent>> liveBeginHandlers;
     private final RoomInfo roomInfo;
     private final RoomInit roomInit;
@@ -71,12 +71,12 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
-    public Collection<Consumer<DanmakuClientClosedEvent>> danmakuClientClosedHandlers() {
+    public Collection<Consumer<LiveEndEvent>> liveEndHandlers() {
         return this.danmakuClosedHandlers;
     }
 
     @Override
-    public void addClosedHandlers(Consumer<DanmakuClientClosedEvent> consumer) {
+    public void addLiveEndHandlers(Consumer<LiveEndEvent> consumer) {
         this.danmakuClosedHandlers.add(consumer);
     }
 
@@ -147,7 +147,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     public void onClose(int i, String s, boolean b) {
         log.info("Connection to {}:{} of Room {} is closed", uri.getHost(), uri.getPort(), roomInit.getRoomId());
         this.timer.shutdownNow();
-        DanmakuClientClosedEvent event = new DanmakuClientClosedEvent(this, this.uri, this.roomInfo, this.roomInit);
+        LiveEndEvent event = new LiveEndEvent(this, this.uri, this.roomInfo, this.roomInit);
         for (var consumer : danmakuClosedHandlers) {
             threadPoolExecutor.execute(() -> consumer.accept(event));
         }

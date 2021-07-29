@@ -1,7 +1,7 @@
 package org.mokusakura.danmakurecorder.core;
 
-import org.mokusakura.danmakurecorder.core.event.DanmakuClientClosedEvent;
 import org.mokusakura.danmakurecorder.core.event.DanmakuReceivedEvent;
+import org.mokusakura.danmakurecorder.core.event.LiveEndEvent;
 import org.mokusakura.danmakurecorder.core.event.LiveStreamBeginEvent;
 import org.mokusakura.danmakurecorder.core.exception.NoNetworkConnectionException;
 import org.mokusakura.danmakurecorder.core.exception.NoRoomFoundException;
@@ -17,7 +17,7 @@ public interface DanmakuClient extends Closeable {
 
     Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers();
 
-    Collection<Consumer<DanmakuClientClosedEvent>> danmakuClientClosedHandlers();
+    Collection<Consumer<LiveEndEvent>> liveEndHandlers();
 
     Collection<Consumer<LiveStreamBeginEvent>> liveBeginHandlers();
 
@@ -38,6 +38,6 @@ public interface DanmakuClient extends Closeable {
 
     void addReceivedHandlers(Consumer<DanmakuReceivedEvent> consumer);
 
-    void addClosedHandlers(Consumer<DanmakuClientClosedEvent> consumer);
+    void addLiveEndHandlers(Consumer<LiveEndEvent> consumer);
 
 }

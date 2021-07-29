@@ -9,14 +9,14 @@ import java.net.URI;
 /**
  * @author MokuSakura
  */
-public class DanmakuClientClosedEvent {
+public class LiveEndEvent {
     private DanmakuClient danmakuClient;
     private URI uri;
     private RoomInfo roomInfo;
     private RoomInit roomInit;
 
-    public DanmakuClientClosedEvent(DanmakuClient danmakuClient, URI uri,
-                                    RoomInfo roomInfo, RoomInit roomInit) {
+    public LiveEndEvent(DanmakuClient danmakuClient, URI uri,
+                        RoomInfo roomInfo, RoomInit roomInit) {
         this.danmakuClient = danmakuClient;
         this.uri = uri;
         this.roomInfo = roomInfo;
@@ -27,7 +27,7 @@ public class DanmakuClientClosedEvent {
         return danmakuClient;
     }
 
-    public DanmakuClientClosedEvent setDanmakuClient(DanmakuClient danmakuClient) {
+    public LiveEndEvent setDanmakuClient(DanmakuClient danmakuClient) {
         this.danmakuClient = danmakuClient;
         return this;
     }
@@ -36,7 +36,7 @@ public class DanmakuClientClosedEvent {
         return uri;
     }
 
-    public DanmakuClientClosedEvent setUri(URI uri) {
+    public LiveEndEvent setUri(URI uri) {
         this.uri = uri;
         return this;
     }
@@ -45,7 +45,7 @@ public class DanmakuClientClosedEvent {
         return roomInfo;
     }
 
-    public DanmakuClientClosedEvent setRoomInfo(RoomInfo roomInfo) {
+    public LiveEndEvent setRoomInfo(RoomInfo roomInfo) {
         this.roomInfo = roomInfo;
         return this;
     }
@@ -54,7 +54,7 @@ public class DanmakuClientClosedEvent {
         return roomInit;
     }
 
-    public DanmakuClientClosedEvent setRoomInit(RoomInit roomInit) {
+    public LiveEndEvent setRoomInit(RoomInit roomInit) {
         this.roomInit = roomInit;
         return this;
     }
