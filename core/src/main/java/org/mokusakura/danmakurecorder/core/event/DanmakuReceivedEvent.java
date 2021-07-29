@@ -1,25 +1,23 @@
 package org.mokusakura.danmakurecorder.core.event;
 
-import org.mokusakura.danmakurecorder.core.model.DanmakuModelBase;
+import org.mokusakura.danmakurecorder.core.model.AbstractDanmaku;
 
 /**
  * @author MokuSakura
  */
 public class DanmakuReceivedEvent {
     private String danmakuJson;
-    private DanmakuModelBase danmakuModelBase;
+    private Integer roomId;
+    private AbstractDanmaku abstractDanmaku;
 
     public DanmakuReceivedEvent() {
     }
 
-
-    public String getDanmakuRaw() {
-        return danmakuJson;
-    }
-
-    public DanmakuReceivedEvent setDanmakuRaw(String danmakuJson) {
+    public DanmakuReceivedEvent(String danmakuJson, Integer roomId,
+                                AbstractDanmaku abstractDanmaku) {
         this.danmakuJson = danmakuJson;
-        return this;
+        this.roomId = roomId;
+        this.abstractDanmaku = abstractDanmaku;
     }
 
     public String getDanmakuJson() {
@@ -31,13 +29,21 @@ public class DanmakuReceivedEvent {
         return this;
     }
 
-    public DanmakuModelBase getDanmakuModelBase() {
-        return danmakuModelBase;
+    public AbstractDanmaku getAbstractDanmaku() {
+        return abstractDanmaku;
     }
 
-    public DanmakuReceivedEvent setDanmakuModelBase(
-            DanmakuModelBase danmakuModelBase) {
-        this.danmakuModelBase = danmakuModelBase;
+    public DanmakuReceivedEvent setAbstractDanmaku(AbstractDanmaku abstractDanmaku) {
+        this.abstractDanmaku = abstractDanmaku;
+        return this;
+    }
+
+    public Integer getRoomId() {
+        return roomId;
+    }
+
+    public DanmakuReceivedEvent setRoomId(Integer roomId) {
+        this.roomId = roomId;
         return this;
     }
 }

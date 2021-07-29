@@ -1,9 +1,11 @@
 package org.mokusakura.danmakurecorder.core.model;
 
+import com.alibaba.fastjson.JSONObject;
+
 /**
  * @author MokuSakura
  */
-public class SendGiftModel extends DanmakuModelBase {
+public class SendGiftModel extends AbstractDanmaku {
     protected Integer giftId;
     protected Integer giftType;
     protected String giftName;
@@ -14,8 +16,27 @@ public class SendGiftModel extends DanmakuModelBase {
     protected Integer medalLevel;
     protected String medalName;
 
+    static {
+        register("SEND_GIFT", SendGiftModel::new);
+    }
 
-    protected SendGiftModel() {}
+    protected SendGiftModel(String json) {
+        var obj = JSONObject.parseObject(json);
+        super.uid = obj.getJSONObject("data").getInteger("uid");
+        super.timestamp = obj.getJSONObject("data").getLong("timestamp");
+        super.messageType = MessageType.GiftSend;
+        super.username = obj.getJSONObject("data").getString("uname");
+
+        giftId = obj.getJSONObject("data").getInteger("giftId");
+        giftType = obj.getJSONObject("data").getInteger("giftType");
+        giftName = obj.getJSONObject("data").getString("giftName");
+        giftPrice = obj.getJSONObject("data").getDouble("price");
+        giftNumber = obj.getJSONObject("data").getInteger("num");
+        guardLevel = obj.getJSONObject("data").getInteger("guard_level");
+        guardName = mapGuardLevelToName(guardLevel);
+        medalLevel = obj.getJSONObject("data").getJSONObject("medal_info").getInteger("medal_level");
+        medalName = obj.getJSONObject("data").getJSONObject("medal_info").getString("medal_name");
+    }
 
     public Integer getGiftId() {
         return giftId;

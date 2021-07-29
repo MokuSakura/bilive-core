@@ -1,12 +1,13 @@
-package org.mokusakura.danmakurecorder.core;
+package org.mokusakura.danmakurecorder.core.client;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.mokusakura.danmakurecorder.core.event.DanmakuReceivedEvent;
+import org.mokusakura.danmakurecorder.core.event.LiveBeginEvent;
 import org.mokusakura.danmakurecorder.core.event.LiveEndEvent;
-import org.mokusakura.danmakurecorder.core.event.LiveStreamBeginEvent;
+import org.mokusakura.danmakurecorder.core.event.OtherEvent;
 import org.mokusakura.danmakurecorder.core.model.RoomInfo;
 import org.mokusakura.danmakurecorder.core.model.RoomInit;
 import org.mokusakura.danmakurecorder.core.protocol.ActionType;
@@ -27,7 +28,7 @@ import java.util.zip.Inflater;
 /**
  * @author MokuSakura
  * <p>
- *     This is not completed yet.
+ * This is not completed yet.
  * </p>
  */
 @Slf4j
@@ -36,7 +37,8 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
     private final Set<Consumer<LiveEndEvent>> danmakuClosedHandlers;
-    private final Set<Consumer<LiveStreamBeginEvent>> liveBeginHandlers;
+    private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
+    private final Set<Consumer<OtherEvent>> otherHandlers;
     private final RoomInfo roomInfo;
     private final RoomInit roomInit;
     private final URI uri;
@@ -56,6 +58,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         danmakuReceivedHandlers = new LinkedHashSet<>();
         danmakuClosedHandlers = new LinkedHashSet<>();
         liveBeginHandlers = new LinkedHashSet<>();
+        otherHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(10, 10, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
     }
@@ -81,13 +84,23 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
-    public Collection<Consumer<LiveStreamBeginEvent>> liveBeginHandlers() {
+    public Collection<Consumer<LiveBeginEvent>> liveBeginHandlers() {
         return liveBeginHandlers;
     }
 
     @Override
-    public void addLiveBeginHandler(Consumer<LiveStreamBeginEvent> consumer) {
+    public void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer) {
         liveBeginHandlers.add(consumer);
+    }
+
+    @Override
+    public Collection<Consumer<OtherEvent>> otherHandlers() {
+        return otherHandlers;
+    }
+
+    @Override
+    public void addOtherHandlers(Consumer<OtherEvent> consumer) {
+        otherHandlers.add(consumer);
     }
 
     @Override
@@ -147,10 +160,6 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     public void onClose(int i, String s, boolean b) {
         log.info("Connection to {}:{} of Room {} is closed", uri.getHost(), uri.getPort(), roomInit.getRoomId());
         this.timer.shutdownNow();
-        LiveEndEvent event = new LiveEndEvent(this, this.uri, this.roomInfo, this.roomInit);
-        for (var consumer : danmakuClosedHandlers) {
-            threadPoolExecutor.execute(() -> consumer.accept(event));
-        }
     }
 
     @Override

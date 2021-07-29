@@ -3,7 +3,7 @@ package org.mokusakura.danmakurecorder.core.model;
 /**
  * @author MokuSakura
  */
-public enum DanmakuType {
+public enum MessageType {
     // 彈幕
     Comment,
     // 禮物

@@ -11,14 +11,11 @@ import org.springframework.context.ApplicationContext;
 public class Room {
     private final BilibiliApiClient danmakuApiClient;
     private final ApplicationContext applicationContext;
-    private final DanmakuClientBuilder danmakuClientBuilder;
     private Integer roomId;
 
-    public Room(BilibiliApiClient danmakuApiClient, ApplicationContext applicationContext,
-                DanmakuClientBuilder danmakuClientBuilder) {
+    public Room(BilibiliApiClient danmakuApiClient, ApplicationContext applicationContext) {
         this.danmakuApiClient = danmakuApiClient;
         this.applicationContext = applicationContext;
-        this.danmakuClientBuilder = danmakuClientBuilder;
     }
 
     void connect(Integer shortId) {

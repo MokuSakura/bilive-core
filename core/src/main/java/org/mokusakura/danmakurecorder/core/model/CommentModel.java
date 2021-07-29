@@ -1,17 +1,45 @@
 package org.mokusakura.danmakurecorder.core.model;
 
+import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
+
+
 /**
  * @author MokuSakura
  */
-public class CommentModel extends DanmakuModelBase {
+@Slf4j
+public class CommentModel extends AbstractDanmaku {
     protected String commentText;
     protected Boolean admin;
     protected Boolean vip;
-    protected String userGuardLevel;
+
+    static {
+        register("DANMU_MSG", CommentModel::new);
+    }
+
+    protected Integer guardLevel;
     protected Integer medalLevel;
     protected String medalName;
+    protected String guardName;
 
-    protected CommentModel() {}
+    protected CommentModel(String json) {
+        var obj = JSONObject.parseObject(json);
+        super.messageType = MessageType.Comment;
+        super.uid = obj.getJSONArray("info").getJSONArray(2).getInteger(0);
+        super.username = obj.getJSONArray("info").getJSONArray(2).getString(1);
+        super.timestamp = obj.getJSONArray("info").getJSONObject(9).getLong("ts");
+
+        this.commentText = obj.getJSONArray("info").getString(1);
+        this.admin = "1".equals(obj.getJSONArray("info").getJSONArray(2).getString(2));
+        this.vip = "1".equals(obj.getJSONArray("info").getJSONArray(2).getString(3));
+        this.guardLevel = obj.getJSONArray("info").getInteger(7);
+        this.guardName = mapGuardLevelToName(guardLevel);
+        var medalArray = obj.getJSONArray("info").getJSONArray(3);
+        if (medalArray != null && medalArray.size() > 0) {
+            this.medalLevel = obj.getJSONArray("info").getJSONArray(3).getInteger(0);
+            this.medalName = obj.getJSONArray("info").getJSONArray(3).getString(1);
+        }
+    }
 
     public String getCommentText() {
         return commentText;
@@ -40,12 +68,12 @@ public class CommentModel extends DanmakuModelBase {
         return this;
     }
 
-    public String getUserGuardLevel() {
-        return userGuardLevel;
+    public Integer getUserGuardLevel() {
+        return guardLevel;
     }
 
-    public CommentModel setUserGuardLevel(String userGuardLevel) {
-        this.userGuardLevel = userGuardLevel;
+    public CommentModel setUserGuardLevel(Integer guardLevel) {
+        this.guardLevel = guardLevel;
         return this;
     }
 

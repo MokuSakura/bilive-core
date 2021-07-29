@@ -1,15 +1,15 @@
-package org.mokusakura.danmakurecorder.core;
+package org.mokusakura.danmakurecorder.core.client;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.mokusakura.danmakurecorder.core.api.BilibiliApiClient;
 import org.mokusakura.danmakurecorder.core.event.DanmakuReceivedEvent;
+import org.mokusakura.danmakurecorder.core.event.LiveBeginEvent;
 import org.mokusakura.danmakurecorder.core.event.LiveEndEvent;
-import org.mokusakura.danmakurecorder.core.event.LiveStreamBeginEvent;
+import org.mokusakura.danmakurecorder.core.event.OtherEvent;
 import org.mokusakura.danmakurecorder.core.exception.NoNetworkConnectionException;
 import org.mokusakura.danmakurecorder.core.exception.NoRoomFoundException;
-import org.mokusakura.danmakurecorder.core.model.DanmakuServerInfo;
-import org.mokusakura.danmakurecorder.core.model.RoomInit;
+import org.mokusakura.danmakurecorder.core.model.*;
 import org.mokusakura.danmakurecorder.core.protocol.ActionType;
 import org.mokusakura.danmakurecorder.core.protocol.ProtocolVersion;
 import org.mokusakura.danmakurecorder.core.protocol.WebSocketHeader;
@@ -38,8 +38,9 @@ public class TcpDanmakuClient implements DanmakuClient {
     private final ScheduledExecutorService timer;
     private final BilibiliApiClient apiClient;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<LiveEndEvent>> danmakuClosedHandlers;
-    private final Set<Consumer<LiveStreamBeginEvent>> liveBeginHandlers;
+    private final Set<Consumer<LiveEndEvent>> liveEndHandlers;
+    private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
+    private final Set<Consumer<OtherEvent>> otherHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
     private final Lock lock;
@@ -55,13 +56,14 @@ public class TcpDanmakuClient implements DanmakuClient {
         this.apiClient = apiClient;
         timer = new ScheduledThreadPoolExecutor(10);
         danmakuReceivedHandlers = new LinkedHashSet<>();
-        danmakuClosedHandlers = new LinkedHashSet<>();
+        liveEndHandlers = new LinkedHashSet<>();
         liveBeginHandlers = new LinkedHashSet<>();
+        otherHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
         messageHandlers = new LinkedHashMap<>();
         lock = new ReentrantLock();
         closed = true;
-        messageHandlers.put(ProtocolVersion.PureJson, this::handlePureJson);
+        messageHandlers.put(ProtocolVersion.PureJson, this::handleNormalData);
         messageHandlers.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
     }
 
@@ -72,16 +74,21 @@ public class TcpDanmakuClient implements DanmakuClient {
 
     @Override
     public Collection<Consumer<LiveEndEvent>> liveEndHandlers() {
-        return danmakuClosedHandlers;
+        return liveEndHandlers;
     }
 
     @Override
-    public Collection<Consumer<LiveStreamBeginEvent>> liveBeginHandlers() {
+    public Collection<Consumer<LiveBeginEvent>> liveBeginHandlers() {
         return liveBeginHandlers;
     }
 
     @Override
-    public void addLiveBeginHandler(Consumer<LiveStreamBeginEvent> consumer) {
+    public Collection<Consumer<OtherEvent>> otherHandlers() {
+        return otherHandlers;
+    }
+
+    @Override
+    public void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer) {
         liveBeginHandlers.add(consumer);
     }
 
@@ -92,7 +99,12 @@ public class TcpDanmakuClient implements DanmakuClient {
 
     @Override
     public void addLiveEndHandlers(Consumer<LiveEndEvent> consumer) {
-        danmakuClosedHandlers.add(consumer);
+        liveEndHandlers.add(consumer);
+    }
+
+    @Override
+    public void addOtherHandlers(Consumer<OtherEvent> consumer) {
+        otherHandlers.add(consumer);
     }
 
     @Override
@@ -102,12 +114,14 @@ public class TcpDanmakuClient implements DanmakuClient {
             if (!closed) {
                 return;
             }
-            closed = false;
             this.roomInit = apiClient.getRoomInit(roomId).getData();
             danmakuServerInfo = apiClient.getDanmakuServerInfo(roomInit.getRoomId()).getData();
             var hostListItems = Arrays.stream(danmakuServerInfo.getHostList())
                     .filter(hostListItem -> hostListItem.getHost() != null && hostListItem.getPort() != null)
                     .toArray(DanmakuServerInfo.HostListItem[]::new);
+            if (hostListItems.length == 0) {
+                return;
+            }
             hostListItem = hostListItems[0];
             var host = hostListItem.getHost();
             var port = hostListItem.getPort();
@@ -123,6 +137,7 @@ public class TcpDanmakuClient implements DanmakuClient {
                 timer.scheduleAtFixedRate(this::sendHeartBeanAsync, 10, 30, TimeUnit.SECONDS);
                 log.info("Connect to {}:{} of Room {}, short id {}, with token {}", host, port, roomInit.getRoomId(),
                          roomInit.getShortId(), danmakuServerInfo.getToken());
+                closed = false;
             } catch (IOException | InterruptedException | ExecutionException e) {
                 log.error(e.getMessage());
             }
@@ -170,13 +185,31 @@ public class TcpDanmakuClient implements DanmakuClient {
         disconnect();
     }
 
-    protected void handlePureJson(WebSocketHeader header, ByteBuffer byteBuffer) {
+    protected void handleNormalData(WebSocketHeader header, ByteBuffer byteBuffer) {
         var json = new String(byteBuffer.array(), StandardCharsets.UTF_8);
-        //TODO Deserialize here
-        threadPoolExecutor.submit(
-                () -> danmakuReceivedHandlers.forEach(
-                        (action) -> action.accept(new DanmakuReceivedEvent().setDanmakuRaw(json))));
+        try {
+            GenericBilibiliMessage message = GenericBilibiliMessage.createFromJson(json);
 
+            if (message instanceof AbstractDanmaku) {
+                threadPoolExecutor.execute(() -> danmakuReceivedHandlers.forEach((action) -> action.accept(
+                        new DanmakuReceivedEvent(json, this.roomInit.getRoomId(), (AbstractDanmaku) message)))
+                );
+            } else if (message instanceof LiveBeginModel) {
+                threadPoolExecutor.execute(() -> liveBeginHandlers.forEach(
+                        (action) -> action.accept(new LiveBeginEvent((LiveBeginModel) message)))
+                );
+            } else if (message instanceof LiveEndModel) {
+                threadPoolExecutor.execute(() -> liveEndHandlers.forEach(
+                        (action) -> action.accept(new LiveEndEvent((LiveEndModel) message)))
+                );
+            } else {
+                threadPoolExecutor.execute(() -> otherHandlers.forEach(
+                        (action) -> action.accept(new OtherEvent(message, roomInit.getRoomId())))
+                );
+            }
+        } catch (Exception e) {
+            log.error(json);
+        }
     }
 
     protected void handleCompressedData(WebSocketHeader header, ByteBuffer byteBuffer) {
@@ -242,7 +275,7 @@ public class TcpDanmakuClient implements DanmakuClient {
      * then {@link TcpDanmakuClient#handleCompressedData(WebSocketHeader, ByteBuffer)} will be executed.
      * After decompress data, this method must be called with decompressed body data.
      * If ProtocolVersion is {@link ProtocolVersion#PureJson},
-     * then {@link TcpDanmakuClient#handlePureJson(WebSocketHeader, ByteBuffer)} will be executed.
+     * then {@link TcpDanmakuClient#handleNormalData(WebSocketHeader, ByteBuffer)} will be executed.
      * </p>
      *
      * @param data- Data to handle
