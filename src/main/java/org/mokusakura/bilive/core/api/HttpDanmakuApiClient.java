@@ -8,22 +8,18 @@ import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.model.*;
 
-import java.io.Closeable;
-import java.net.ConnectException;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * @author MokuSakura
  */
 @Slf4j
-public class HttpDanmakuApiClient implements BilibiliApiClient, Closeable {
+public class HttpDanmakuApiClient implements BilibiliApiClient {
     public static final String HEADER_ACCEPT = "application/json, text/javascript, */*; q=0.01";
     public static final String HEADER_ORIGIN = "https://live.bilibili.com";
     public static final String HEADER_REFERER = "https://live.bilibili.com/";
@@ -35,8 +31,6 @@ public class HttpDanmakuApiClient implements BilibiliApiClient, Closeable {
     public static final String BILIBILI_LIVE_STREAM_INFO_PATH = "/xlive/web-room/v2/index/getRoomPlayInfo?room_id=%d&protocol=0%%2C1&format=0%%2C2&codec=0%%2C1&qn=10000&platform=web&ptype=16";
     public static final String BILIBILI_LIVE_ROOM_INIT_PATH = "/room/v1/Room/room_init?id=%d";
     private final HttpClient httpClient;
-    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
-    private final AtomicBoolean closed = new AtomicBoolean(false);
 
     public HttpDanmakuApiClient(HttpClient httpClient) {
         this.httpClient = httpClient;
@@ -123,22 +117,8 @@ public class HttpDanmakuApiClient implements BilibiliApiClient, Closeable {
 
     }
 
-    @Override
-    public void close() {
-        try {
-            readWriteLock.writeLock().lock();
-            closed.set(true);
-        } finally {
-            readWriteLock.writeLock().unlock();
-        }
-    }
-
     private <T> BilibiliApiResponse<T> get(String path, Class<T> actualClass) throws NoNetworkConnectionException {
         try {
-            readWriteLock.readLock().lock();
-            if (closed.get()) {
-                throw new RuntimeException("Http client is closed");
-            }
             var request = HttpRequest.newBuilder()
                     .GET()
                     .uri(new URI("https://" + BILIBILI_LIVE_API_HOST + path))
@@ -156,9 +136,9 @@ public class HttpDanmakuApiClient implements BilibiliApiClient, Closeable {
                 throw new BilibiliApiCodeNotZeroException(request.uri().toString(), res.getMessage(), res.getCode());
             }
             return res;
-        } catch (ConnectException e) {
+        } catch (IOException | InterruptedException e) {
             log.info("No network connection");
-            log.debug(e.getClass().toString());
+//            log.debug(e.getClass().toString());
             throw new NoNetworkConnectionException();
         } catch (BilibiliApiCodeNotZeroException e) {
             throw e;
@@ -167,8 +147,6 @@ public class HttpDanmakuApiClient implements BilibiliApiClient, Closeable {
             log.error(e.getClass().toString());
             log.error(Arrays.toString(e.getStackTrace()));
             throw new RuntimeException(e);
-        } finally {
-            readWriteLock.readLock().unlock();
         }
     }
 }

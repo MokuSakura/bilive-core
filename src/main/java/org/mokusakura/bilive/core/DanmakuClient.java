@@ -1,9 +1,6 @@
 package org.mokusakura.bilive.core;
 
-import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
-import org.mokusakura.bilive.core.event.LiveBeginEvent;
-import org.mokusakura.bilive.core.event.LiveEndEvent;
-import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.*;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 
@@ -22,6 +19,8 @@ public interface DanmakuClient extends Closeable {
     Collection<Consumer<LiveEndEvent>> liveEndHandlers();
 
     Collection<Consumer<LiveBeginEvent>> liveBeginHandlers();
+
+    Collection<Consumer<DisconnectEvent>> disconnectHandlers();
 
     Collection<Consumer<OtherEvent>> otherHandlers();
 
@@ -47,5 +46,7 @@ public interface DanmakuClient extends Closeable {
     void addLiveEndHandlers(Consumer<LiveEndEvent> consumer);
 
     void addOtherHandlers(Consumer<OtherEvent> consumer);
+
+    void addDisconnectHandlers(Consumer<DisconnectEvent> consumer);
 
 }

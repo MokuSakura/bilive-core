@@ -4,10 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
-import org.mokusakura.bilive.core.event.LiveBeginEvent;
-import org.mokusakura.bilive.core.event.LiveEndEvent;
-import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.*;
 import org.mokusakura.bilive.core.model.*;
 
 import java.io.ByteArrayOutputStream;
@@ -97,6 +94,16 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     @Override
     public void addOtherHandlers(Consumer<OtherEvent> consumer) {
         otherHandlers.add(consumer);
+    }
+
+    @Override
+    public Collection<Consumer<DisconnectEvent>> disconnectHandlers() {
+        return null;
+    }
+
+    @Override
+    public void addDisconnectHandlers(Consumer<DisconnectEvent> consumer) {
+
     }
 
     @Override

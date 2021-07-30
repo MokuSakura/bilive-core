@@ -37,7 +37,8 @@ public class TestTcpDanmakuClient {
         var build = new TcpDanmakuClient(
                 new HttpDanmakuApiClient(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build()));
         build.addLiveBeginHandler(liveBeginEvent -> log.debug("Begin"));
-        build.addReceivedHandlers((event) -> onDanmaku(event.getAbstractDanmaku()));
+        build.addReceivedHandlers(event -> onDanmaku(event.getAbstractDanmaku()));
+        build.addDisconnectHandlers(event -> semaphore.release());
         ScheduledExecutorService timer = new ScheduledThreadPoolExecutor(1);
         build.connect(510);
         timer.scheduleAtFixedRate(this::printValue, 10, 60, TimeUnit.SECONDS);
