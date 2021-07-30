@@ -39,10 +39,12 @@ public class TestTcpDanmakuClient {
         build.addLiveBeginHandler(liveBeginEvent -> log.debug("Begin"));
         build.addReceivedHandlers((event) -> onDanmaku(event.getAbstractDanmaku()));
         ScheduledExecutorService timer = new ScheduledThreadPoolExecutor(1);
-        build.connect(22634198);
+        build.connect(510);
         timer.scheduleAtFixedRate(this::printValue, 10, 60, TimeUnit.SECONDS);
+        timer.scheduleAtFixedRate(
+                () -> log.debug("Memory usage {}", Runtime.getRuntime().totalMemory() / (1024.0 * 1024.0)), 10, 60,
+                TimeUnit.SECONDS);
         semaphore.acquire(1);
-
         timer.shutdownNow();
     }
 
@@ -69,22 +71,23 @@ public class TestTcpDanmakuClient {
             totalPrice += guardBuyModel.getGiftPrice();
         } else if (danmaku instanceof SCModel) {
             SCModel scModel = (SCModel) danmaku;
-            log.debug("{} buy {}￥SC {}", scModel.getUsername(), scModel.getPrice(), scModel.getMessage());
+            scModel.setPrice(scModel.getPrice() * 1000);
+            log.debug("{} buy {} SC {}", scModel.getUsername(), scModel.getPrice(), scModel.getMessage());
             totalPrice += scModel.getPrice();
             userSentPrice.compute(scModel.getUsername(), (uid, price) ->
                     price == null ? scModel.getPrice() : price + scModel.getPrice());
         }
-
     }
 
     void printValue() {
-        System.out.println("\u001b\u005b35m" + totalPrice);
-        int i = 0;
-        for (Map.Entry<String, Double> entry : userSentPrice.entrySet()) {
-            if (i++ > 10) {
-                break;
-            }
-            System.out.printf("\u001b\u005b35m{%s:%.2f}%n", entry.getKey(), entry.getValue());
-        }
+        System.out.println("\u001b\u005b35mTotal price:" + totalPrice + "\u001b\u005b0m");
+        System.out.println("\u001b\u005b35mTotal user count:" + interactTimes.size() + "\u001b\u005b0m");
+        userSentPrice.entrySet()
+                .stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .limit(10)
+                .forEach((entry) -> System.out.printf("\u001b\u005b35m{%s:%.2f}%n\u001b\u005b0m", entry.getKey(),
+                                                      entry.getValue()));
+
     }
 }
