@@ -7,9 +7,6 @@ import java.util.Map;
  * @author MokuSakura
  */
 public abstract class AbstractDanmaku extends GenericBilibiliMessage {
-    protected Integer uid;
-    protected String username;
-    protected Long timestamp;
     private static final Map<Integer, String> GUARD_LEVEL_NAME_MAP = new LinkedHashMap<>();
     private static final Map<String, Integer> GUARD_NAME_LEVEL_MAP = new LinkedHashMap<>();
 
@@ -21,6 +18,10 @@ public abstract class AbstractDanmaku extends GenericBilibiliMessage {
         GUARD_NAME_LEVEL_MAP.put("提督", 2);
         GUARD_NAME_LEVEL_MAP.put("舰长", 3);
     }
+
+    protected Integer uid;
+    protected String username;
+    protected Long timestamp;
 
     public static String mapGuardLevelToName(Integer guardLevel) {
         return GUARD_LEVEL_NAME_MAP.get(guardLevel);

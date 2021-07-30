@@ -8,6 +8,7 @@ import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.function.Consumer;
 
@@ -37,7 +38,7 @@ public interface DanmakuClient extends Closeable {
 
     boolean isConnected();
 
-    void disconnect();
+    void disconnect() throws IOException;
 
     void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer);
 

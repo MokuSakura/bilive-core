@@ -151,7 +151,7 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public void disconnect() {
+    public void disconnect() throws IOException {
         try {
             lock.lock();
             if (closed) {
@@ -174,6 +174,7 @@ public class TcpDanmakuClient implements DanmakuClient {
             log.error("Error closing DanmakuClient");
             log.error(e.getMessage());
             log.error(Arrays.toString(e.getStackTrace()));
+            throw e;
         } finally {
             socket = null;
             inputStream = null;
@@ -227,7 +228,7 @@ public class TcpDanmakuClient implements DanmakuClient {
             Inflater inflater = new Inflater();
             byte[] buffer = new byte[1024];
             inflater.setInput(byteBuffer.array(), 0, byteBuffer.array().length);
-            int inflateLength = 0;
+            int inflateLength;
 
             while ((inflateLength = inflater.inflate(buffer, 0, buffer.length)) != 0) {
                 baos.write(buffer, 0, inflateLength);
@@ -358,7 +359,10 @@ public class TcpDanmakuClient implements DanmakuClient {
                 }
             }
         } catch (IOException e) {
-            disconnect();
+            try {
+                disconnect();
+            } catch (IOException ignored) {
+            }
         }
     }
 }

@@ -221,7 +221,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         inflater.setInput(compressedData, WebSocketHeader.BODY_OFFSET,
                           compressedData.length - header.getHeaderLength());
-        int inflateLength = 0;
+        int inflateLength;
         try {
             while ((inflateLength = inflater.inflate(buffer, 0, buffer.length)) != 0) {
                 baos.write(buffer, 0, inflateLength);
