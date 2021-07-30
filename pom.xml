@@ -24,7 +24,7 @@
         </dependency>
         <dependency>
             <groupId>org.mokusakura</groupId>
-            <artifactId>bilibili-danmaku-recorder-core</artifactId>
+            <artifactId>bilive-core</artifactId>
             <version>0.0.1</version>
         </dependency>
     </dependencies>
