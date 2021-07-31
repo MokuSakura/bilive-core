@@ -40,7 +40,7 @@ public class TcpDanmakuClient implements DanmakuClient {
     private final ThreadPoolExecutor threadPoolExecutor;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
     private final Lock lock;
-    private ScheduledFuture<?> heartBeatTast;
+    private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
     private boolean closed;
     private Socket socket;
@@ -136,9 +136,6 @@ public class TcpDanmakuClient implements DanmakuClient {
     @Override
     public void disconnect() throws IOException {
         disconnectWithoutEvent();
-        for (var handler : disconnectHandlers) {
-            handler.accept(new DisconnectEvent(roomInit.getRoomId()));
-        }
     }
 
     @Override
@@ -351,7 +348,7 @@ public class TcpDanmakuClient implements DanmakuClient {
                 sendHeartBeatAsync().get();
                 // Start read Thread
                 new Thread(this::readThread).start();
-                heartBeatTast = timer.scheduleAtFixedRate(() -> {
+                heartBeatTask = timer.scheduleAtFixedRate(() -> {
                     try {
                         this.sendHeartBeatAsync().get(10, TimeUnit.SECONDS);
                     } catch (InterruptedException | ExecutionException | TimeoutException e) {
@@ -396,6 +393,9 @@ public class TcpDanmakuClient implements DanmakuClient {
             }
         }
         disconnect();
+        for (var handler : disconnectHandlers) {
+            handler.accept(new DisconnectEvent(roomInit.getRoomId()));
+        }
     }
 
     private void disconnectWithoutEvent() throws IOException {
@@ -426,7 +426,7 @@ public class TcpDanmakuClient implements DanmakuClient {
             socket = null;
             inputStream = null;
             outputStream = null;
-            heartBeatTast.cancel(true);
+            heartBeatTask.cancel(true);
             lock.unlock();
         }
     }
