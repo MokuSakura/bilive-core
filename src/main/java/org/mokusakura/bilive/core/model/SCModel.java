@@ -29,8 +29,11 @@ public class SCModel extends AbstractDanmaku {
         this.keepTime = obj.getJSONObject("data").getInteger("time");
         guardLevel = obj.getJSONObject("data").getInteger("guard_level");
         guardName = mapGuardLevelToName(guardLevel);
-        medalLevel = obj.getJSONObject("data").getJSONObject("medal_info").getInteger("medal_level");
-        medalName = obj.getJSONObject("data").getJSONObject("medal_info").getString("medal_name");
+        var medalInfo = obj.getJSONObject("data").getJSONObject("medal_info");
+        if (medalInfo != null) {
+            medalLevel = obj.getJSONObject("data").getJSONObject("medal_info").getInteger("medal_level");
+            medalName = obj.getJSONObject("data").getJSONObject("medal_info").getString("medal_name");
+        }
     }
 
     public Double getPrice() {
