@@ -69,15 +69,20 @@ public class XmlDanmakuWriter implements DanmakuWriter {
     @Override
     public void enable(String path) throws IOException {
         try {
+            if (path.endsWith(File.separator)) {
+                path = path.substring(0, path.length() - 1 - File.separator.length());
+            }
+            String parentPath = path.substring(0, path.lastIndexOf(File.separator));
             outputStreamReadWriteLock.writeLock().lock();
             if (xmlWriter != null) {
                 return;
             }
             file = new File(path);
+            File parentDir = new File(parentPath);
             if (file.exists()) {
                 throw new FileAlreadyExistsException(path);
             }
-            if (!file.mkdirs() || !file.createNewFile()) {
+            if (!parentDir.mkdirs() || !file.createNewFile()) {
                 throw new IOException("Error creating file " + path);
             }
             log.info("Create file {}", path);
