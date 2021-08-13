@@ -19,14 +19,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @author MokuSakura
  */
 @Log4j2
-public class BasicDanmakuWriter implements DanmakuWriter {
+public class XmlDanmakuWriter implements DanmakuWriter {
     private final ReadWriteLock outputStreamReadWriteLock;
     private final ExecutorService threadPool;
     private File file;
     private XMLStreamWriter xmlWriter;
 
 
-    public BasicDanmakuWriter() {
+    public XmlDanmakuWriter() {
         outputStreamReadWriteLock = new ReentrantReadWriteLock();
         threadPool = new ThreadPoolExecutor(100, 100, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100));
     }
@@ -77,7 +77,7 @@ public class BasicDanmakuWriter implements DanmakuWriter {
             if (file.exists()) {
                 throw new FileAlreadyExistsException(path);
             }
-            if (!file.createNewFile()) {
+            if (!file.mkdirs() || !file.createNewFile()) {
                 throw new IOException("Error creating file " + path);
             }
             log.info("Create file {}", path);
