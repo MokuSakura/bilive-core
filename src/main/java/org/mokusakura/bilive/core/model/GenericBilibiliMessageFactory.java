@@ -1,7 +1,7 @@
 package org.mokusakura.bilive.core.model;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -12,7 +12,7 @@ import java.util.function.Function;
 /**
  * @author MokuSakura
  */
-@Slf4j
+@Log4j2
 public class GenericBilibiliMessageFactory {
     private static final GenericBilibiliMessageFactory INSTANCE = new GenericBilibiliMessageFactory();
     private final Map<String, Function<String, GenericBilibiliMessage>> CMD_MAP = new LinkedHashMap<>();

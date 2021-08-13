@@ -1,7 +1,7 @@
 package org.mokusakura.bilive.core;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.Test;
 import org.mokusakura.bilive.core.api.BilibiliApiClient;
 import org.mokusakura.bilive.core.api.HttpDanmakuApiClient;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  * @author MokuSakura
  */
 //@SpringBootTest
-@Slf4j
+@Log4j2
 public class TestTcpDanmakuClient {
     Double totalPrice = 0.0;
     Map<Integer, Integer> interactTimes = new HashMap<>();
