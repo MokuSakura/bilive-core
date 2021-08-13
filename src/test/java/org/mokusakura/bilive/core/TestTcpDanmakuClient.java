@@ -26,7 +26,9 @@ import java.util.concurrent.TimeUnit;
  * @author MokuSakura
  */
 //@SpringBootTest
+
 @Log4j2
+@SuppressWarnings("all")
 public class TestTcpDanmakuClient {
     Double totalPrice = 0.0;
     Map<Integer, Integer> interactTimes = new HashMap<>();
@@ -34,7 +36,7 @@ public class TestTcpDanmakuClient {
     private final BilibiliApiClient apiClient = new HttpDanmakuApiClient(
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
     private final Integer connectRoomId = 22571958;
-    DanmakuWriter writer = new BasicDanmakuWriter();
+    DanmakuWriter writer = new XmlDanmakuWriter();
     private RoomInfo roomInfo;
 
     public TestTcpDanmakuClient() {
