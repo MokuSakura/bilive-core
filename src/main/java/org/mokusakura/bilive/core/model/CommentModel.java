@@ -1,13 +1,11 @@
 package org.mokusakura.bilive.core.model;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.extern.slf4j.Slf4j;
 
 
 /**
  * @author MokuSakura
  */
-@Slf4j
 public class CommentModel extends AbstractDanmaku {
     protected String commentText;
     protected Boolean admin;

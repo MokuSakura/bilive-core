@@ -1,6 +1,6 @@
 package org.mokusakura.bilive.core.model;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -8,7 +8,7 @@ import java.util.Arrays;
 /**
  * @author MokuSakura
  */
-@Slf4j
+@Log4j2
 public class WebSocketHeader {
     public static final short HEADER_LENGTH = 16;
     public static final int TOTAL_LENGTH_OFFSET = 0;
