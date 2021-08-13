@@ -1,7 +1,7 @@
 package org.mokusakura.bilive.core;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.api.BilibiliApiClient;
 import org.mokusakura.bilive.core.event.*;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
@@ -27,7 +27,7 @@ import java.util.zip.Inflater;
 /**
  * @author MokuSakura
  */
-@Slf4j
+@Log4j2
 public class TcpDanmakuClient implements DanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;

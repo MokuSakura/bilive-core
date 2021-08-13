@@ -1,6 +1,6 @@
 package org.mokusakura.bilive.core;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.model.AbstractDanmaku;
 
 import javax.xml.stream.XMLOutputFactory;
@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * @author MokuSakura
  */
-@Slf4j
+@Log4j2
 public class BasicDanmakuWriter implements DanmakuWriter {
     private final ReadWriteLock outputStreamReadWriteLock;
     private final ExecutorService threadPool;
@@ -102,7 +102,10 @@ public class BasicDanmakuWriter implements DanmakuWriter {
                 return;
             }
             xmlWriter.writeEndElement();
+            //noinspection ResultOfMethodCallIgnored
+            file.setReadOnly();
             xmlWriter.close();
+
         } catch (XMLStreamException e) {
             throw new IOException(e);
         } finally {

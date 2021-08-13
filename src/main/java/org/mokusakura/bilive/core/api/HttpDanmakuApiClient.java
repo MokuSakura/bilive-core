@@ -2,7 +2,7 @@ package org.mokusakura.bilive.core.api;
 
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.exception.BilibiliApiCodeNotZeroException;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
@@ -18,7 +18,7 @@ import java.util.Arrays;
 /**
  * @author MokuSakura
  */
-@Slf4j
+@Log4j2
 public class HttpDanmakuApiClient implements BilibiliApiClient {
     public static final String HEADER_ACCEPT = "application/json, text/javascript, */*; q=0.01";
     public static final String HEADER_ORIGIN = "https://live.bilibili.com";

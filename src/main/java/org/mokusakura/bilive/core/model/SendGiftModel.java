@@ -31,8 +31,11 @@ public class SendGiftModel extends AbstractDanmaku {
         giftNumber = obj.getJSONObject("data").getInteger("num");
         guardLevel = obj.getJSONObject("data").getInteger("guard_level");
         guardName = mapGuardLevelToName(guardLevel);
-        medalLevel = obj.getJSONObject("data").getJSONObject("medal_info").getInteger("medal_level");
-        medalName = obj.getJSONObject("data").getJSONObject("medal_info").getString("medal_name");
+        var medalInfo = obj.getJSONObject("data").getJSONObject("medal_info");
+        if (medalInfo != null) {
+            medalLevel = medalInfo.getInteger("medal_level");
+            medalName = medalInfo.getString("medal_name");
+        }
     }
 
     public Integer getGiftId() {
