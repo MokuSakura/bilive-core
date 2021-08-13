@@ -1,12 +1,9 @@
 package org.mokusakura.bilive.core;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.api.BilibiliApiClient;
-import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
-import org.mokusakura.bilive.core.event.LiveBeginEvent;
-import org.mokusakura.bilive.core.event.LiveEndEvent;
-import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.*;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.model.*;
@@ -18,6 +15,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
@@ -29,18 +27,20 @@ import java.util.zip.Inflater;
 /**
  * @author MokuSakura
  */
-@Slf4j
+@Log4j2
 public class TcpDanmakuClient implements DanmakuClient {
-
+    public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
     private final BilibiliApiClient apiClient;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
     private final Set<Consumer<LiveEndEvent>> liveEndHandlers;
     private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
     private final Set<Consumer<OtherEvent>> otherHandlers;
+    private final Set<Consumer<DisconnectEvent>> disconnectHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
     private final Lock lock;
+    private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
     private boolean closed;
     private Socket socket;
@@ -56,6 +56,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         liveEndHandlers = new LinkedHashSet<>();
         liveBeginHandlers = new LinkedHashSet<>();
         otherHandlers = new LinkedHashSet<>();
+        disconnectHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
         messageHandlers = new LinkedHashMap<>();
         lock = new ReentrantLock();
@@ -86,6 +87,11 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
+    public Collection<Consumer<DisconnectEvent>> disconnectHandlers() {
+        return disconnectHandlers;
+    }
+
+    @Override
     public void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer) {
         liveBeginHandlers.add(consumer);
     }
@@ -106,43 +112,20 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public void connect(int roomId) throws NoNetworkConnectionException, NoRoomFoundException {
-        try {
-            lock.lock();
-            if (!closed) {
-                return;
-            }
-            this.roomInit = apiClient.getRoomInit(roomId).getData();
-            danmakuServerInfo = apiClient.getDanmakuServerInfo(roomInit.getRoomId()).getData();
-            var hostListItems = Arrays.stream(danmakuServerInfo.getHostList())
-                    .filter(hostListItem -> hostListItem.getHost() != null && hostListItem.getPort() != null)
-                    .toArray(DanmakuServerInfo.HostListItem[]::new);
-            if (hostListItems.length == 0) {
-                return;
-            }
-            hostListItem = hostListItems[0];
-            var host = hostListItem.getHost();
-            var port = hostListItem.getPort();
-            try {
-                // Connection is setup here
-                socket = new Socket(host, port);
-                inputStream = socket.getInputStream();
-                outputStream = socket.getOutputStream();
-                sendHelloAsync().get();
-                sendHeartBeanAsync().get();
-                // Start read Thread
-                new Thread(this::readThread).start();
-                timer.scheduleAtFixedRate(this::sendHeartBeanAsync, 10, 30, TimeUnit.SECONDS);
-                log.info("Connect to {}:{} of Room {}, short id {}, with token {}", host, port, roomInit.getRoomId(),
-                         roomInit.getShortId(), danmakuServerInfo.getToken());
-                closed = false;
-            } catch (IOException | InterruptedException | ExecutionException e) {
-                log.error(e.getMessage());
-            }
-        } finally {
-            lock.unlock();
-        }
+    public void addDisconnectHandlers(Consumer<DisconnectEvent> consumer) {
+        disconnectHandlers.add(consumer);
+    }
 
+    @Override
+    public void connect(int roomId) throws NoNetworkConnectionException, NoRoomFoundException {
+        this.roomInit = apiClient.getRoomInit(roomId).getData();
+        int tryTimes = 0;
+        while (tryTimes++ < TRY_TIMES) {
+            if (connectWithTrueRoomId(roomInit.getRoomId())) {
+                return;
+            }
+        }
+        throw new NoNetworkConnectionException();
     }
 
     @Override
@@ -152,36 +135,7 @@ public class TcpDanmakuClient implements DanmakuClient {
 
     @Override
     public void disconnect() throws IOException {
-        try {
-            lock.lock();
-            if (closed) {
-                return;
-            }
-            closed = true;
-            log.info("Disconnect from {}:{} Room id {}, short id {}", hostListItem.getHost(), hostListItem.getPort(),
-                     roomInit.getRoomId(), roomInit.getShortId());
-            if (socket != null) {
-                socket.close();
-            }
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (outputStream != null) {
-                outputStream.close();
-            }
-
-        } catch (IOException e) {
-            log.error("Error closing DanmakuClient");
-            log.error(e.getMessage());
-            log.error(Arrays.toString(e.getStackTrace()));
-            throw e;
-        } finally {
-            socket = null;
-            inputStream = null;
-            outputStream = null;
-            timer.shutdownNow();
-            lock.unlock();
-        }
+        disconnectWithoutEvent();
     }
 
     @Override
@@ -193,15 +147,15 @@ public class TcpDanmakuClient implements DanmakuClient {
         if (header.getActionType() != ActionType.GlobalInfo) {
             return;
         }
-        var json = new String(byteBuffer.array(), StandardCharsets.UTF_8);
+        var messageBody = new String(byteBuffer.array(), StandardCharsets.UTF_8);
         try {
-            GenericBilibiliMessage message = GenericBilibiliMessageFactory.getInstance().create(json);
+            GenericBilibiliMessage message = GenericBilibiliMessageFactory.getInstance().create(messageBody);
             if (message == null) {
                 return;
             }
             if (message instanceof AbstractDanmaku) {
                 danmakuReceivedHandlers.forEach((action) -> action.accept(
-                        new DanmakuReceivedEvent(json, this.roomInit.getRoomId(), (AbstractDanmaku) message)));
+                        new DanmakuReceivedEvent(messageBody, this.roomInit.getRoomId(), (AbstractDanmaku) message)));
 
             } else if (message instanceof LiveBeginModel) {
                 liveBeginHandlers.forEach(
@@ -256,13 +210,13 @@ public class TcpDanmakuClient implements DanmakuClient {
         return sendMessageAsync(ActionType.Hello, body.toJSONString());
     }
 
-    protected Future<Boolean> sendHeartBeanAsync() {
+    protected Future<Boolean> sendHeartBeatAsync() {
         return sendMessageAsync(ActionType.HeartBeat, "");
     }
 
     protected Future<Boolean> sendMessageAsync(ActionType actionType, String body) {
         return threadPoolExecutor.submit(() -> {
-            log.debug("send {}, {}", actionType, body);
+//            log.debug("send {}, {}", actionType, body);
             String cbody = body == null ? "" : body;
             var payload = cbody.getBytes(StandardCharsets.UTF_8);
             var size = payload.length + WebSocketHeader.HEADER_LENGTH;
@@ -314,7 +268,6 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     protected void readThread() {
-
         try {
             // All unused data is stored here
             byte[] data = new byte[0];
@@ -359,10 +312,122 @@ public class TcpDanmakuClient implements DanmakuClient {
                 }
             }
         } catch (IOException e) {
-            try {
-                disconnect();
-            } catch (IOException ignored) {
+            threadPoolExecutor.execute(() -> {
+                try {
+                    disconnectWithoutEvent();
+                    tryReconnect();
+                } catch (Exception ignored) {
+                }
+            });
+        }
+    }
+
+    private boolean connectWithTrueRoomId(Integer roomId) throws NoNetworkConnectionException {
+        try {
+            lock.lock();
+            if (!closed) {
+                return false;
             }
+
+            danmakuServerInfo = apiClient.getDanmakuServerInfo(roomId).getData();
+            var hostListItems = Arrays.stream(danmakuServerInfo.getHostList())
+                    .filter(hostListItem -> hostListItem.getHost() != null && hostListItem.getPort() != null)
+                    .toArray(DanmakuServerInfo.HostListItem[]::new);
+            if (hostListItems.length == 0) {
+                return false;
+            }
+            hostListItem = hostListItems[0];
+            var host = hostListItem.getHost();
+            var port = hostListItem.getPort();
+            try {
+                // Connection is setup here
+                socket = new Socket(host, port);
+                inputStream = socket.getInputStream();
+                outputStream = socket.getOutputStream();
+                sendHelloAsync().get();
+                sendHeartBeatAsync().get();
+                // Start read Thread
+                new Thread(this::readThread).start();
+                heartBeatTask = timer.scheduleAtFixedRate(() -> {
+                    try {
+                        this.sendHeartBeatAsync().get(10, TimeUnit.SECONDS);
+                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
+                        e.printStackTrace();
+                    }
+                }, 10, 30, TimeUnit.SECONDS);
+                closed = false;
+                log.info("Connect to {}:{} of Room {}, short id {}, with token {}", host, port, roomInit.getRoomId(),
+                         roomInit.getShortId(), danmakuServerInfo.getToken());
+                return true;
+            } catch (IOException | InterruptedException | ExecutionException e) {
+                log.error(e.getMessage());
+            }
+        } catch (NoNetworkConnectionException e) {
+            throw e;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+        }
+        return false;
+    }
+
+    private void tryReconnect() throws IOException {
+
+        int tryTimes = 0;
+        while (tryTimes++ < TRY_TIMES) {
+            log.info("Try reconnect for the {} time to room {} short id {}",
+                     tryTimes == 1 ? "1st" : tryTimes == 2 ? "2nd" : tryTimes == 3 ? "3rd" : tryTimes + "th",
+                     roomInit.getRoomId(),
+                     roomInit.getShortId());
+            try {
+                if (connectWithTrueRoomId(roomInit.getRoomId())) {
+                    return;
+                }
+            } catch (NoNetworkConnectionException e) {
+                try {
+                    Thread.sleep(Duration.ofSeconds(10).toMillis());
+                } catch (InterruptedException ignored) {
+
+                }
+            }
+        }
+        disconnect();
+        for (var handler : disconnectHandlers) {
+            handler.accept(new DisconnectEvent(roomInit.getRoomId()));
+        }
+    }
+
+    private void disconnectWithoutEvent() throws IOException {
+        try {
+            lock.lock();
+            if (closed) {
+                return;
+            }
+            closed = true;
+            log.info("Disconnect from {}:{} Room id {}, short id {}", hostListItem.getHost(), hostListItem.getPort(),
+                     roomInit.getRoomId(), roomInit.getShortId());
+            if (socket != null) {
+                socket.close();
+            }
+            if (inputStream != null) {
+                inputStream.close();
+            }
+            if (outputStream != null) {
+                outputStream.close();
+            }
+
+        } catch (IOException e) {
+            log.error("Error closing DanmakuClient");
+            log.error(e.getMessage());
+            log.error(Arrays.toString(e.getStackTrace()));
+            throw e;
+        } finally {
+            socket = null;
+            inputStream = null;
+            outputStream = null;
+            heartBeatTask.cancel(true);
+            lock.unlock();
         }
     }
 }

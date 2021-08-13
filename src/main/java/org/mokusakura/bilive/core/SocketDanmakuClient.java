@@ -1,13 +1,10 @@
 package org.mokusakura.bilive.core;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
-import org.mokusakura.bilive.core.event.LiveBeginEvent;
-import org.mokusakura.bilive.core.event.LiveEndEvent;
-import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.*;
 import org.mokusakura.bilive.core.model.*;
 
 import java.io.ByteArrayOutputStream;
@@ -27,7 +24,7 @@ import java.util.zip.Inflater;
  * This is not completed yet.
  * </p>
  */
-@Slf4j
+@Log4j2
 public class SocketDanmakuClient extends WebSocketClient implements DanmakuClient {
     public static final int HEADER_SIZE = 16;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
@@ -97,6 +94,16 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     @Override
     public void addOtherHandlers(Consumer<OtherEvent> consumer) {
         otherHandlers.add(consumer);
+    }
+
+    @Override
+    public Collection<Consumer<DisconnectEvent>> disconnectHandlers() {
+        return null;
+    }
+
+    @Override
+    public void addDisconnectHandlers(Consumer<DisconnectEvent> consumer) {
+
     }
 
     @Override

@@ -1,7 +1,7 @@
 package org.mokusakura.bilive.core.api;
 
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.Test;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
@@ -11,7 +11,7 @@ import java.net.http.HttpClient;
 /**
  * @author MokuSakura
  */
-@Slf4j
+@Log4j2
 public class TestHttpDanmakuApiClient {
     private static final Integer NOT_EXISTS_ROOM_ID = 4065;
     private static final Integer EXISTS_ROOM_ID = 477;

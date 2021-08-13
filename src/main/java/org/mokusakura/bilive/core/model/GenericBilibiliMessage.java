@@ -20,7 +20,6 @@ import java.util.function.Function;
 @Slf4j
 public abstract class GenericBilibiliMessage {
 
-    private static boolean inited = false;
     protected MessageType messageType;
     protected String rawMessage;
 
