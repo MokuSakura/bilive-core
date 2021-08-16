@@ -9,9 +9,9 @@ import org.mokusakura.bilive.core.api.model.RoomInit;
 import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
 import org.mokusakura.bilive.core.event.OtherEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
-import org.mokusakura.bilive.core.model.ActionType;
-import org.mokusakura.bilive.core.model.ProtocolVersion;
 import org.mokusakura.bilive.core.model.WebSocketHeader;
+import org.mokusakura.bilive.core.model.WebSocketHeader.ActionType;
+import org.mokusakura.bilive.core.model.WebSocketHeader.ProtocolVersion;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;

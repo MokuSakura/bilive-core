@@ -11,6 +11,8 @@ import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.model.*;
+import org.mokusakura.bilive.core.model.WebSocketHeader.ActionType;
+import org.mokusakura.bilive.core.model.WebSocketHeader.ProtocolVersion;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
