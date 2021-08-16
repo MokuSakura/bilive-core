@@ -5,12 +5,12 @@ import java.util.function.Function;
 /**
  * <p>
  * Generic Bilibili Message.<br/>
- * Using {@link AbstractDanmakuFactory#create(String)} to create a instance.<br/>
+ * Using {@link GenericBilibiliMessageFactory#create(String)} to create a instance.<br/>
  * Notice that if more inherited classes are defined,
- * call {@link AbstractDanmakuFactory#register(String, Function)} to make sure an instance can be created
- * by calling {@link AbstractDanmakuFactory#create(String)}
+ * call {@link GenericBilibiliMessageFactory#register(String, Function)} to make sure an instance can be created
+ * by calling {@link GenericBilibiliMessageFactory#create(String)}
  * from a JSONObject in which the value of key "cmd" is the first parameter of
- * {@link AbstractDanmakuFactory#register(String, Function)}
+ * {@link GenericBilibiliMessageFactory#register(String, Function)}
  * </p>
  *
  * @author MokuSakura

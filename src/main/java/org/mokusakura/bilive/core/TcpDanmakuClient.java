@@ -135,7 +135,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         }
         var messageBody = new String(byteBuffer.array(), StandardCharsets.UTF_8);
         try {
-            GenericBilibiliMessage message = AbstractDanmakuFactory.getInstance().create(messageBody);
+            GenericBilibiliMessage message = GenericBilibiliMessageFactory.getInstance().create(messageBody);
             if (message == null) {
                 return;
             }

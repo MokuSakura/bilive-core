@@ -14,13 +14,13 @@ import java.util.regex.Pattern;
  * @author MokuSakura
  */
 @Log4j2
-public class AbstractDanmakuFactory {
-    private static final AbstractDanmakuFactory INSTANCE = new AbstractDanmakuFactory();
+public class GenericBilibiliMessageFactory {
+    private static final GenericBilibiliMessageFactory INSTANCE = new GenericBilibiliMessageFactory();
     private final Map<String, Function<String, GenericBilibiliMessage>> CMD_MAP = new LinkedHashMap<>();
     private final Pattern cmdPattern = Pattern.compile(
             "(?=[^\\\\])\"cmd(?=[^\\\\])\":.*?(?=[^\\\\])\"(.*?)(?=[^\\\\])\"");
 
-    private AbstractDanmakuFactory() {
+    private GenericBilibiliMessageFactory() {
         register("GUARD_BUY", GuardBuyModel::new);
         register("DANMU_MSG", CommentModel::new);
         register("LIVE", LiveBeginModel::new);
@@ -31,7 +31,7 @@ public class AbstractDanmakuFactory {
 
     }
 
-    public static AbstractDanmakuFactory getInstance() {
+    public static GenericBilibiliMessageFactory getInstance() {
         return INSTANCE;
     }
 
@@ -71,7 +71,7 @@ public class AbstractDanmakuFactory {
      * <p>
      * Create an instance of {@link GenericBilibiliMessage} from json string.
      * If there is no key "cmd" in the provided json or the value of "cmd" is not registered by calling
-     * {@link AbstractDanmakuFactory#register(String, Function)}, this method will return null.
+     * {@link GenericBilibiliMessageFactory#register(String, Function)}, this method will return null.
      * Otherwise the return value is depended on the registered function.
      * </p>
      *
