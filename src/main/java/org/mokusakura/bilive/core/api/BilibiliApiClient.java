@@ -1,8 +1,8 @@
 package org.mokusakura.bilive.core.api;
 
+import org.mokusakura.bilive.core.api.model.*;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
-import org.mokusakura.bilive.core.model.*;
 
 /**
  * @author MokuSakura

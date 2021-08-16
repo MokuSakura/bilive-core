@@ -3,6 +3,8 @@ package org.mokusakura.bilive.core;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.api.BilibiliApiClient;
+import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
+import org.mokusakura.bilive.core.api.model.RoomInit;
 import org.mokusakura.bilive.core.event.*;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
@@ -37,8 +39,9 @@ public class TcpDanmakuClient implements DanmakuClient {
     private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
     private final Set<Consumer<OtherEvent>> otherHandlers;
     private final Set<Consumer<DisconnectEvent>> disconnectHandlers;
+    private final Set<Consumer<MessageReceivedEvent>> messageHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
-    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
+    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageConverters;
     private final Lock lock;
     private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
@@ -57,14 +60,16 @@ public class TcpDanmakuClient implements DanmakuClient {
         liveBeginHandlers = new LinkedHashSet<>();
         otherHandlers = new LinkedHashSet<>();
         disconnectHandlers = new LinkedHashSet<>();
+        messageHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
-        messageHandlers = new LinkedHashMap<>();
+        messageConverters = new LinkedHashMap<>();
         lock = new ReentrantLock();
         closed = true;
-        messageHandlers.put(ProtocolVersion.PureJson, this::handleNormalData);
-        messageHandlers.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
-        messageHandlers.put(ProtocolVersion.CompressedBuffer2, this::handleCompressedData);
+        messageConverters.put(ProtocolVersion.PureJson, this::handlePureJson);
+        messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
+        messageConverters.put(ProtocolVersion.CompressedBuffer2, this::handleCompressedData);
     }
+
 
     @Override
     public Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers() {
@@ -97,22 +102,22 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public void addReceivedHandlers(Consumer<DanmakuReceivedEvent> consumer) {
+    public void addReceivedHandler(Consumer<DanmakuReceivedEvent> consumer) {
         danmakuReceivedHandlers.add(consumer);
     }
 
     @Override
-    public void addLiveEndHandlers(Consumer<LiveEndEvent> consumer) {
+    public void addLiveEndHandler(Consumer<LiveEndEvent> consumer) {
         liveEndHandlers.add(consumer);
     }
 
     @Override
-    public void addOtherHandlers(Consumer<OtherEvent> consumer) {
+    public void addOtherHandler(Consumer<OtherEvent> consumer) {
         otherHandlers.add(consumer);
     }
 
     @Override
-    public void addDisconnectHandlers(Consumer<DisconnectEvent> consumer) {
+    public void addDisconnectHandler(Consumer<DisconnectEvent> consumer) {
         disconnectHandlers.add(consumer);
     }
 
@@ -143,13 +148,15 @@ public class TcpDanmakuClient implements DanmakuClient {
         disconnect();
     }
 
-    protected void handleNormalData(WebSocketHeader header, ByteBuffer byteBuffer) {
+    protected void handlePureJson(WebSocketHeader header, ByteBuffer byteBuffer) {
         if (header.getActionType() != ActionType.GlobalInfo) {
             return;
         }
         var messageBody = new String(byteBuffer.array(), StandardCharsets.UTF_8);
+        log.debug("{}{}{}{}", header.getTotalLength(), header.getProtocolVersion(), header.getActionType(),
+                  messageBody);
         try {
-            GenericBilibiliMessage message = GenericBilibiliMessageFactory.getInstance().create(messageBody);
+            GenericBilibiliMessage message = AbstractDanmakuFactory.getInstance().create(messageBody);
             if (message == null) {
                 return;
             }
@@ -239,7 +246,7 @@ public class TcpDanmakuClient implements DanmakuClient {
      * then {@link TcpDanmakuClient#handleCompressedData(WebSocketHeader, ByteBuffer)} will be executed.
      * After decompress data, this method must be called with decompressed body data.
      * If ProtocolVersion is {@link ProtocolVersion#PureJson},
-     * then {@link TcpDanmakuClient#handleNormalData(WebSocketHeader, ByteBuffer)} will be executed.
+     * then {@link TcpDanmakuClient#handlePureJson(WebSocketHeader, ByteBuffer)} will be executed.
      * </p>
      *
      * @param data- Data to handle
@@ -256,7 +263,7 @@ public class TcpDanmakuClient implements DanmakuClient {
             // Begin from the 16th byte, end at the index of the 4 bytes unsigned int value of the header.
             byte[] bodySlice = Arrays.copyOfRange(data, offset + WebSocketHeader.BODY_OFFSET,
                                                   offset + (int) decodedHeader.getTotalLength());
-            var handler = messageHandlers.get(decodedHeader.getProtocolVersion());
+            var handler = messageConverters.get(decodedHeader.getProtocolVersion());
             Objects.requireNonNullElse(handler, (a, b) -> {})
                     .accept(decodedHeader, ByteBuffer.wrap(bodySlice));
             if (offset + bodySlice.length + headSlice.length == data.length) {

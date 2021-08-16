@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core.model;
+package org.mokusakura.bilive.core.api.model;
 
 import com.alibaba.fastjson.annotation.JSONField;
 

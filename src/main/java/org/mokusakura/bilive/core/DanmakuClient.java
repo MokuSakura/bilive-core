@@ -14,6 +14,7 @@ import java.util.function.Consumer;
  */
 public interface DanmakuClient extends Closeable {
 
+
     Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers();
 
     Collection<Consumer<LiveEndEvent>> liveEndHandlers();
@@ -39,14 +40,15 @@ public interface DanmakuClient extends Closeable {
 
     void disconnect() throws IOException;
 
+
     void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer);
 
-    void addReceivedHandlers(Consumer<DanmakuReceivedEvent> consumer);
+    void addReceivedHandler(Consumer<DanmakuReceivedEvent> consumer);
 
-    void addLiveEndHandlers(Consumer<LiveEndEvent> consumer);
+    void addLiveEndHandler(Consumer<LiveEndEvent> consumer);
 
-    void addOtherHandlers(Consumer<OtherEvent> consumer);
+    void addOtherHandler(Consumer<OtherEvent> consumer);
 
-    void addDisconnectHandlers(Consumer<DisconnectEvent> consumer);
+    void addDisconnectHandler(Consumer<DisconnectEvent> consumer);
 
 }

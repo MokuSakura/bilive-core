@@ -82,7 +82,10 @@ public class XmlDanmakuWriter implements DanmakuWriter {
             if (file.exists()) {
                 throw new FileAlreadyExistsException(path);
             }
-            if (!parentDir.mkdirs() || !file.createNewFile()) {
+            if (!parentDir.exists() && parentDir.mkdirs()) {
+                throw new IOException("Error creating dir " + parentPath);
+            }
+            if (!file.createNewFile()) {
                 throw new IOException("Error creating file " + path);
             }
             log.info("Create file {}", path);

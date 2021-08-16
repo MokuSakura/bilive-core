@@ -3,10 +3,10 @@ package org.mokusakura.bilive.core.api;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import lombok.extern.log4j.Log4j2;
+import org.mokusakura.bilive.core.api.model.*;
 import org.mokusakura.bilive.core.exception.BilibiliApiCodeNotZeroException;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
-import org.mokusakura.bilive.core.model.*;
 
 import java.io.IOException;
 import java.net.URI;

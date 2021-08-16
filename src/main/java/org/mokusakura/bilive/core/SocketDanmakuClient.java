@@ -4,8 +4,13 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.mokusakura.bilive.core.api.model.RoomInfo;
+import org.mokusakura.bilive.core.api.model.RoomInit;
 import org.mokusakura.bilive.core.event.*;
-import org.mokusakura.bilive.core.model.*;
+import org.mokusakura.bilive.core.model.ActionType;
+import org.mokusakura.bilive.core.model.MessageReceivedEvent;
+import org.mokusakura.bilive.core.model.ProtocolVersion;
+import org.mokusakura.bilive.core.model.WebSocketHeader;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
@@ -27,11 +32,12 @@ import java.util.zip.Inflater;
 @Log4j2
 public class SocketDanmakuClient extends WebSocketClient implements DanmakuClient {
     public static final int HEADER_SIZE = 16;
-    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
+    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageConverters;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
     private final Set<Consumer<LiveEndEvent>> danmakuClosedHandlers;
     private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
     private final Set<Consumer<OtherEvent>> otherHandlers;
+    private final Set<Consumer<MessageReceivedEvent>> messageHandlers;
     private final RoomInfo roomInfo;
     private final RoomInit roomInit;
     private final URI uri;
@@ -44,17 +50,19 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         this.uri = uri;
         this.roomInit = roomInit;
         this.roomInfo = roomInfo;
-        messageHandlers = new HashMap<>();
-        messageHandlers.put(ProtocolVersion.PureJson, this::handlePureJson);
-        messageHandlers.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
+        messageConverters = new HashMap<>();
+        messageConverters.put(ProtocolVersion.PureJson, this::handlePureJson);
+        messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
         timer = new ScheduledThreadPoolExecutor(10, (ThreadFactory) Thread::new);
         danmakuReceivedHandlers = new LinkedHashSet<>();
         danmakuClosedHandlers = new LinkedHashSet<>();
         liveBeginHandlers = new LinkedHashSet<>();
         otherHandlers = new LinkedHashSet<>();
+        messageHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(10, 10, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
     }
+
 
     @Override
     public Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers() {
@@ -62,7 +70,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
-    public void addReceivedHandlers(Consumer<DanmakuReceivedEvent> consumer) {
+    public void addReceivedHandler(Consumer<DanmakuReceivedEvent> consumer) {
         danmakuReceivedHandlers.add(consumer);
     }
 
@@ -72,7 +80,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
-    public void addLiveEndHandlers(Consumer<LiveEndEvent> consumer) {
+    public void addLiveEndHandler(Consumer<LiveEndEvent> consumer) {
         this.danmakuClosedHandlers.add(consumer);
     }
 
@@ -92,7 +100,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
-    public void addOtherHandlers(Consumer<OtherEvent> consumer) {
+    public void addOtherHandler(Consumer<OtherEvent> consumer) {
         otherHandlers.add(consumer);
     }
 
@@ -102,7 +110,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
-    public void addDisconnectHandlers(Consumer<DisconnectEvent> consumer) {
+    public void addDisconnectHandler(Consumer<DisconnectEvent> consumer) {
 
     }
 
@@ -155,7 +163,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         //Meaning I may get something like [header,body,header.body...]
         //Need to find a way to solve this.
         var decodedHeader = WebSocketHeader.newInstance(bytes.array(), true);
-        var handler = messageHandlers.get(decodedHeader.getProtocolVersion());
+        var handler = messageConverters.get(decodedHeader.getProtocolVersion());
         Objects.requireNonNullElse(handler, (a, b) -> {}).accept(decodedHeader, bytes);
     }
 

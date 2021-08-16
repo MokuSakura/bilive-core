@@ -1,4 +1,5 @@
-package org.mokusakura.bilive.core.model;
+package org.mokusakura.bilive.core.api.model;
+
 import java.util.List;
 
 
