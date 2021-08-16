@@ -2,11 +2,17 @@ package org.mokusakura.bilive.core;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
-import org.mokusakura.bilive.core.api.BilibiliApiClient;
-import org.mokusakura.bilive.core.event.*;
+import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
+import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
+import org.mokusakura.bilive.core.api.model.RoomInit;
+import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
+import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.model.*;
+import org.mokusakura.bilive.core.model.WebSocketHeader.ActionType;
+import org.mokusakura.bilive.core.model.WebSocketHeader.ProtocolVersion;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -31,14 +37,12 @@ import java.util.zip.Inflater;
 public class TcpDanmakuClient implements DanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
-    private final BilibiliApiClient apiClient;
+    private final BilibiliLiveApiClient apiClient;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<LiveEndEvent>> liveEndHandlers;
-    private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
     private final Set<Consumer<OtherEvent>> otherHandlers;
-    private final Set<Consumer<DisconnectEvent>> disconnectHandlers;
+    private final Set<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
-    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageHandlers;
+    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageConverters;
     private final Lock lock;
     private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
@@ -49,37 +53,27 @@ public class TcpDanmakuClient implements DanmakuClient {
     private InputStream inputStream;
     private OutputStream outputStream;
 
-    public TcpDanmakuClient(BilibiliApiClient apiClient) {
+    public TcpDanmakuClient(BilibiliLiveApiClient apiClient) {
         this.apiClient = apiClient;
         timer = new ScheduledThreadPoolExecutor(10);
         danmakuReceivedHandlers = new LinkedHashSet<>();
-        liveEndHandlers = new LinkedHashSet<>();
-        liveBeginHandlers = new LinkedHashSet<>();
+        statusChangedHandlers = new LinkedHashSet<>();
         otherHandlers = new LinkedHashSet<>();
-        disconnectHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
-        messageHandlers = new LinkedHashMap<>();
+        messageConverters = new LinkedHashMap<>();
         lock = new ReentrantLock();
         closed = true;
-        messageHandlers.put(ProtocolVersion.PureJson, this::handleNormalData);
-        messageHandlers.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
-        messageHandlers.put(ProtocolVersion.CompressedBuffer2, this::handleCompressedData);
+        messageConverters.put(ProtocolVersion.PureJson, this::handlePureJson);
+        messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
+        messageConverters.put(ProtocolVersion.CompressedBuffer2, this::handleCompressedData);
     }
+
 
     @Override
     public Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers() {
         return danmakuReceivedHandlers;
     }
 
-    @Override
-    public Collection<Consumer<LiveEndEvent>> liveEndHandlers() {
-        return liveEndHandlers;
-    }
-
-    @Override
-    public Collection<Consumer<LiveBeginEvent>> liveBeginHandlers() {
-        return liveBeginHandlers;
-    }
 
     @Override
     public Collection<Consumer<OtherEvent>> otherHandlers() {
@@ -87,37 +81,29 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public Collection<Consumer<DisconnectEvent>> disconnectHandlers() {
-        return disconnectHandlers;
+    public Collection<Consumer<StatusChangedEvent>> statusChangedHandlers() {
+        return statusChangedHandlers;
     }
 
     @Override
-    public void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer) {
-        liveBeginHandlers.add(consumer);
-    }
-
-    @Override
-    public void addReceivedHandlers(Consumer<DanmakuReceivedEvent> consumer) {
+    public void addReceivedHandler(Consumer<DanmakuReceivedEvent> consumer) {
         danmakuReceivedHandlers.add(consumer);
     }
 
-    @Override
-    public void addLiveEndHandlers(Consumer<LiveEndEvent> consumer) {
-        liveEndHandlers.add(consumer);
-    }
 
     @Override
-    public void addOtherHandlers(Consumer<OtherEvent> consumer) {
+    public void addOtherHandler(Consumer<OtherEvent> consumer) {
         otherHandlers.add(consumer);
     }
 
+
     @Override
-    public void addDisconnectHandlers(Consumer<DisconnectEvent> consumer) {
-        disconnectHandlers.add(consumer);
+    public void addStatusChangedHandler(Consumer<StatusChangedEvent> consumer) {
+
     }
 
     @Override
-    public void connect(int roomId) throws NoNetworkConnectionException, NoRoomFoundException {
+    public void connect(long roomId) throws NoNetworkConnectionException, NoRoomFoundException {
         this.roomInit = apiClient.getRoomInit(roomId).getData();
         int tryTimes = 0;
         while (tryTimes++ < TRY_TIMES) {
@@ -143,7 +129,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         disconnect();
     }
 
-    protected void handleNormalData(WebSocketHeader header, ByteBuffer byteBuffer) {
+    protected void handlePureJson(WebSocketHeader header, ByteBuffer byteBuffer) {
         if (header.getActionType() != ActionType.GlobalInfo) {
             return;
         }
@@ -154,16 +140,29 @@ public class TcpDanmakuClient implements DanmakuClient {
                 return;
             }
             if (message instanceof AbstractDanmaku) {
-                danmakuReceivedHandlers.forEach((action) -> action.accept(
-                        new DanmakuReceivedEvent(messageBody, this.roomInit.getRoomId(), (AbstractDanmaku) message)));
+                DanmakuReceivedEvent event = new DanmakuReceivedEvent()
+                        .setAbstractDanmaku((AbstractDanmaku) message)
+                        .setDanmakuJson(messageBody)
+                        .setRoomId(roomInit.getRoomId());
+                danmakuReceivedHandlers.forEach((action) -> action.accept(event));
 
             } else if (message instanceof LiveBeginModel) {
-                liveBeginHandlers.forEach(
-                        (action) -> action.accept(new LiveBeginEvent((LiveBeginModel) message)));
+                StatusChangedEvent event = new StatusChangedEvent()
+                        .setMessage(messageBody)
+                        .setStatus(StatusChangedEvent.Status.Begin)
+                        .setRoomId(roomInit.getRoomId())
+                        .setUid(roomInit.getUid());
+                statusChangedHandlers.forEach(
+                        (action) -> action.accept(event));
 
             } else if (message instanceof LiveEndModel) {
-                liveEndHandlers.forEach(
-                        (action) -> action.accept(new LiveEndEvent((LiveEndModel) message)));
+                StatusChangedEvent event = new StatusChangedEvent()
+                        .setMessage(messageBody)
+                        .setStatus(StatusChangedEvent.Status.End)
+                        .setRoomId(roomInit.getRoomId())
+                        .setUid(roomInit.getUid());
+                statusChangedHandlers.forEach(
+                        (action) -> action.accept(event));
 
             } else {
                 otherHandlers.forEach(
@@ -199,15 +198,8 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     protected Future<Boolean> sendHelloAsync() {
-        JSONObject body = new JSONObject();
-        body.put("uid", 0);
-        body.put("roomid", roomInit.getRoomId());
-        body.put("protover", 0);
-        body.put("platform", "web");
-        body.put("clientver", "2.6.25");
-        body.put("type", 2);
-        body.put("key", danmakuServerInfo.getToken());
-        return sendMessageAsync(ActionType.Hello, body.toJSONString());
+        HelloModel helloModel = HelloModel.newDefault(roomInit.getRoomId(), danmakuServerInfo.getToken());
+        return sendMessageAsync(ActionType.Hello, JSONObject.toJSONString(helloModel));
     }
 
     protected Future<Boolean> sendHeartBeatAsync() {
@@ -239,7 +231,7 @@ public class TcpDanmakuClient implements DanmakuClient {
      * then {@link TcpDanmakuClient#handleCompressedData(WebSocketHeader, ByteBuffer)} will be executed.
      * After decompress data, this method must be called with decompressed body data.
      * If ProtocolVersion is {@link ProtocolVersion#PureJson},
-     * then {@link TcpDanmakuClient#handleNormalData(WebSocketHeader, ByteBuffer)} will be executed.
+     * then {@link TcpDanmakuClient#handlePureJson(WebSocketHeader, ByteBuffer)} will be executed.
      * </p>
      *
      * @param data- Data to handle
@@ -256,7 +248,7 @@ public class TcpDanmakuClient implements DanmakuClient {
             // Begin from the 16th byte, end at the index of the 4 bytes unsigned int value of the header.
             byte[] bodySlice = Arrays.copyOfRange(data, offset + WebSocketHeader.BODY_OFFSET,
                                                   offset + (int) decodedHeader.getTotalLength());
-            var handler = messageHandlers.get(decodedHeader.getProtocolVersion());
+            var handler = messageConverters.get(decodedHeader.getProtocolVersion());
             Objects.requireNonNullElse(handler, (a, b) -> {})
                     .accept(decodedHeader, ByteBuffer.wrap(bodySlice));
             if (offset + bodySlice.length + headSlice.length == data.length) {
@@ -322,7 +314,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         }
     }
 
-    private boolean connectWithTrueRoomId(Integer roomId) throws NoNetworkConnectionException {
+    private boolean connectWithTrueRoomId(Long roomId) throws NoNetworkConnectionException {
         try {
             lock.lock();
             if (!closed) {
@@ -393,8 +385,13 @@ public class TcpDanmakuClient implements DanmakuClient {
             }
         }
         disconnect();
-        for (var handler : disconnectHandlers) {
-            handler.accept(new DisconnectEvent(roomInit.getRoomId()));
+        for (var handler : statusChangedHandlers) {
+            StatusChangedEvent event = new StatusChangedEvent()
+                    .setMessage(null)
+                    .setStatus(StatusChangedEvent.Status.Disconnect)
+                    .setRoomId(roomInit.getRoomId())
+                    .setUid(roomInit.getUid());
+            handler.accept(event);
         }
     }
 

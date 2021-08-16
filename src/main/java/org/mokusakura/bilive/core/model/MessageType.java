@@ -19,5 +19,6 @@ public enum MessageType {
     // SuperChat
     SuperChat,
     // 房间信息更新
-    RoomChange
+    RoomChange,
+    InteractWord
 }

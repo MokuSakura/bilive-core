@@ -28,6 +28,34 @@ public class WebSocketHeader {
     private final ActionType actionType;
     private final int sequence;
 
+    public enum ActionType {
+        Default(0), HeartBeat(2), Popularity(3), GlobalInfo(5), Hello(7), EnterRoom(8);
+        private final int value;
+
+        ActionType(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+    }
+
+    public enum ProtocolVersion {
+        PureJson((short) 0), Popularity((short) 1), CompressedBuffer((short) 2), CompressedBuffer2(
+                (short) 5), ClientSend(
+                (short) 1), Default((short) 1);
+        private final short value;
+
+        ProtocolVersion(short value) {
+            this.value = value;
+        }
+
+        public short getValue() {
+            return value;
+        }
+    }
+
     protected WebSocketHeader(int bodyLength, short headerLength,
                               ProtocolVersion protocolVersion, ActionType actionType, int sequence) {
         this.totalLength = bodyLength;

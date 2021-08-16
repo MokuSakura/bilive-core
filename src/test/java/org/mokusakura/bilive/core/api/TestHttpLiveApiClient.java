@@ -12,13 +12,13 @@ import java.net.http.HttpClient;
  * @author MokuSakura
  */
 @Log4j2
-public class TestHttpDanmakuApiClient {
+public class TestHttpLiveApiClient {
     private static final Integer NOT_EXISTS_ROOM_ID = 4065;
     private static final Integer EXISTS_ROOM_ID = 477;
-    private final BilibiliApiClient danmakuClient;
+    private final BilibiliLiveApiClient danmakuClient;
 
-    public TestHttpDanmakuApiClient() {
-        danmakuClient = new HttpDanmakuApiClient(HttpClient.newHttpClient());
+    public TestHttpLiveApiClient() {
+        danmakuClient = new HttpLiveApiClient(HttpClient.newHttpClient());
     }
 
     @Test

@@ -1,6 +1,8 @@
 package org.mokusakura.bilive.core;
 
-import org.mokusakura.bilive.core.event.*;
+import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
+import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 
@@ -14,13 +16,10 @@ import java.util.function.Consumer;
  */
 public interface DanmakuClient extends Closeable {
 
+
     Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers();
 
-    Collection<Consumer<LiveEndEvent>> liveEndHandlers();
-
-    Collection<Consumer<LiveBeginEvent>> liveBeginHandlers();
-
-    Collection<Consumer<DisconnectEvent>> disconnectHandlers();
+    Collection<Consumer<StatusChangedEvent>> statusChangedHandlers();
 
     Collection<Consumer<OtherEvent>> otherHandlers();
 
@@ -33,20 +32,19 @@ public interface DanmakuClient extends Closeable {
      * @throws NoNetworkConnectionException If there is no net work connection
      * @throws NoRoomFoundException         If room id cannot be found
      */
-    void connect(int roomId) throws NoNetworkConnectionException, NoRoomFoundException;
+    void connect(long roomId) throws NoNetworkConnectionException, NoRoomFoundException;
 
     boolean isConnected();
 
     void disconnect() throws IOException;
 
-    void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer);
 
-    void addReceivedHandlers(Consumer<DanmakuReceivedEvent> consumer);
 
-    void addLiveEndHandlers(Consumer<LiveEndEvent> consumer);
+    void addReceivedHandler(Consumer<DanmakuReceivedEvent> consumer);
 
-    void addOtherHandlers(Consumer<OtherEvent> consumer);
 
-    void addDisconnectHandlers(Consumer<DisconnectEvent> consumer);
+    void addOtherHandler(Consumer<OtherEvent> consumer);
+
+    void addStatusChangedHandler(Consumer<StatusChangedEvent> consumer);
 
 }

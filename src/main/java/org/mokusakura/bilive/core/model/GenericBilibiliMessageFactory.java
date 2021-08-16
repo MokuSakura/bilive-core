@@ -1,6 +1,5 @@
 package org.mokusakura.bilive.core.model;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Arrays;
@@ -8,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author MokuSakura
@@ -16,6 +17,8 @@ import java.util.function.Function;
 public class GenericBilibiliMessageFactory {
     private static final GenericBilibiliMessageFactory INSTANCE = new GenericBilibiliMessageFactory();
     private final Map<String, Function<String, GenericBilibiliMessage>> CMD_MAP = new LinkedHashMap<>();
+    private final Pattern cmdPattern = Pattern.compile(
+            "(?=[^\\\\])\"cmd(?=[^\\\\])\":.*?(?=[^\\\\])\"(.*?)(?=[^\\\\])\"");
 
     private GenericBilibiliMessageFactory() {
         register("GUARD_BUY", GuardBuyModel::new);
@@ -24,6 +27,7 @@ public class GenericBilibiliMessageFactory {
         register("PREPARING", LiveEndModel::new);
         register("SUPER_CHAT_MESSAGE", SCModel::new);
         register("SEND_GIFT", SendGiftModel::new);
+        register("INTERACT_WORD", InteractWord::createInteractWord);
 
     }
 
@@ -76,8 +80,11 @@ public class GenericBilibiliMessageFactory {
      */
     public GenericBilibiliMessage create(String json) {
         try {
-            var jsonObject = JSONObject.parseObject(json);
-            var cmd = jsonObject.getString("cmd");
+            Matcher matcher = cmdPattern.matcher(json);
+            if (!matcher.find()) {
+                return null;
+            }
+            String cmd = matcher.group(1);
             cmd = Objects.requireNonNullElse(cmd, "");
             if (cmd.startsWith("DANMU_MSG:")) {
                 cmd = "DANMU_MSG";
@@ -88,9 +95,7 @@ public class GenericBilibiliMessageFactory {
             }
             return res;
         } catch (Exception e) {
-            log.error(e.getMessage());
-            log.error(Arrays.toString(e.getStackTrace()));
-            log.error(json);
+            log.error("{} {} {} {}", e.getMessage(), e.getClass(), Arrays.toString(e.getStackTrace()), json);
             return null;
         }
     }

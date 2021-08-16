@@ -1,0 +1,40 @@
+{
+  "cmd": "INTERACT_WORD",
+  "data": {
+	"contribution": {
+	  "grade": 0
+	},
+	"dmscore": 6,
+	"fans_medal": {
+	  "anchor_roomid": 22637261,
+	  "guard_level": 0,
+	  "icon_id": 0,
+	  "is_lighted": 1,
+	  "medal_color": 6126494,
+	  "medal_color_border": 6126494,
+	  "medal_color_end": 6126494,
+	  "medal_color_start": 6126494,
+	  "medal_level": 6,
+	  "medal_name": "嘉心糖",
+	  "score": 3799,
+	  "special": "",
+	  "target_id": 672328094
+	},
+	"identities": [
+	  3,
+	  1
+	],
+	"is_spread": 0,
+	"msg_type": 1,
+	"roomid": 22508204,
+	"score": 1629099468304,
+	"spread_desc": "",
+	"spread_info": "",
+	"tail_icon": 0,
+	"timestamp": 1629085669,
+	"trigger_time": 1629085668208827000,
+	"uid": 6044601,
+	"uname": "镇守府の校长",
+	"uname_color": ""
+  }
+}

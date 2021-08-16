@@ -7,13 +7,13 @@ import org.mokusakura.bilive.core.model.AbstractDanmaku;
  */
 public class DanmakuReceivedEvent {
     private String danmakuJson;
-    private Integer roomId;
+    private Long roomId;
     private AbstractDanmaku abstractDanmaku;
 
     public DanmakuReceivedEvent() {
     }
 
-    public DanmakuReceivedEvent(String danmakuJson, Integer roomId,
+    public DanmakuReceivedEvent(String danmakuJson, Long roomId,
                                 AbstractDanmaku abstractDanmaku) {
         this.danmakuJson = danmakuJson;
         this.roomId = roomId;
@@ -38,11 +38,11 @@ public class DanmakuReceivedEvent {
         return this;
     }
 
-    public Integer getRoomId() {
+    public Long getRoomId() {
         return roomId;
     }
 
-    public DanmakuReceivedEvent setRoomId(Integer roomId) {
+    public DanmakuReceivedEvent setRoomId(Long roomId) {
         this.roomId = roomId;
         return this;
     }
