@@ -5,8 +5,8 @@ import java.util.List;
 public class RoomInfo {
 
     private Long uid;
-    private Integer roomId;
-    private Integer shortId;
+    private Long roomId;
+    private Long shortId;
     private Long attention;
     private Long online;
     private Boolean isPortrait;
@@ -51,20 +51,20 @@ public class RoomInfo {
         return this;
     }
 
-    public Integer getRoomId() {
+    public Long getRoomId() {
         return roomId;
     }
 
-    public RoomInfo setRoomId(Integer roomId) {
+    public RoomInfo setRoomId(Long roomId) {
         this.roomId = roomId;
         return this;
     }
 
-    public Integer getShortId() {
+    public Long getShortId() {
         return shortId;
     }
 
-    public RoomInfo setShortId(Integer shortId) {
+    public RoomInfo setShortId(Long shortId) {
         this.shortId = shortId;
         return this;
     }

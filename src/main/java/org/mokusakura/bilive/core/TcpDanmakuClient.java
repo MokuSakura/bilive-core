@@ -2,10 +2,12 @@ package org.mokusakura.bilive.core;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
-import org.mokusakura.bilive.core.api.BilibiliApiClient;
+import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
-import org.mokusakura.bilive.core.event.*;
+import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
+import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.model.*;
@@ -33,13 +35,10 @@ import java.util.zip.Inflater;
 public class TcpDanmakuClient implements DanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
-    private final BilibiliApiClient apiClient;
+    private final BilibiliLiveApiClient apiClient;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<LiveEndEvent>> liveEndHandlers;
-    private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
     private final Set<Consumer<OtherEvent>> otherHandlers;
-    private final Set<Consumer<DisconnectEvent>> disconnectHandlers;
-    private final Set<Consumer<MessageReceivedEvent>> messageHandlers;
+    private final Set<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageConverters;
     private final Lock lock;
@@ -52,15 +51,12 @@ public class TcpDanmakuClient implements DanmakuClient {
     private InputStream inputStream;
     private OutputStream outputStream;
 
-    public TcpDanmakuClient(BilibiliApiClient apiClient) {
+    public TcpDanmakuClient(BilibiliLiveApiClient apiClient) {
         this.apiClient = apiClient;
         timer = new ScheduledThreadPoolExecutor(10);
         danmakuReceivedHandlers = new LinkedHashSet<>();
-        liveEndHandlers = new LinkedHashSet<>();
-        liveBeginHandlers = new LinkedHashSet<>();
+        statusChangedHandlers = new LinkedHashSet<>();
         otherHandlers = new LinkedHashSet<>();
-        disconnectHandlers = new LinkedHashSet<>();
-        messageHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
         messageConverters = new LinkedHashMap<>();
         lock = new ReentrantLock();
@@ -76,15 +72,6 @@ public class TcpDanmakuClient implements DanmakuClient {
         return danmakuReceivedHandlers;
     }
 
-    @Override
-    public Collection<Consumer<LiveEndEvent>> liveEndHandlers() {
-        return liveEndHandlers;
-    }
-
-    @Override
-    public Collection<Consumer<LiveBeginEvent>> liveBeginHandlers() {
-        return liveBeginHandlers;
-    }
 
     @Override
     public Collection<Consumer<OtherEvent>> otherHandlers() {
@@ -92,13 +79,8 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public Collection<Consumer<DisconnectEvent>> disconnectHandlers() {
-        return disconnectHandlers;
-    }
-
-    @Override
-    public void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer) {
-        liveBeginHandlers.add(consumer);
+    public Collection<Consumer<StatusChangedEvent>> statusChangedHandlers() {
+        return statusChangedHandlers;
     }
 
     @Override
@@ -106,23 +88,20 @@ public class TcpDanmakuClient implements DanmakuClient {
         danmakuReceivedHandlers.add(consumer);
     }
 
-    @Override
-    public void addLiveEndHandler(Consumer<LiveEndEvent> consumer) {
-        liveEndHandlers.add(consumer);
-    }
 
     @Override
     public void addOtherHandler(Consumer<OtherEvent> consumer) {
         otherHandlers.add(consumer);
     }
 
+
     @Override
-    public void addDisconnectHandler(Consumer<DisconnectEvent> consumer) {
-        disconnectHandlers.add(consumer);
+    public void addStatusChangedHandler(Consumer<StatusChangedEvent> consumer) {
+
     }
 
     @Override
-    public void connect(int roomId) throws NoNetworkConnectionException, NoRoomFoundException {
+    public void connect(long roomId) throws NoNetworkConnectionException, NoRoomFoundException {
         this.roomInit = apiClient.getRoomInit(roomId).getData();
         int tryTimes = 0;
         while (tryTimes++ < TRY_TIMES) {
@@ -159,16 +138,29 @@ public class TcpDanmakuClient implements DanmakuClient {
                 return;
             }
             if (message instanceof AbstractDanmaku) {
-                danmakuReceivedHandlers.forEach((action) -> action.accept(
-                        new DanmakuReceivedEvent(messageBody, this.roomInit.getRoomId(), (AbstractDanmaku) message)));
+                DanmakuReceivedEvent event = new DanmakuReceivedEvent()
+                        .setAbstractDanmaku((AbstractDanmaku) message)
+                        .setDanmakuJson(messageBody)
+                        .setRoomId(roomInit.getRoomId());
+                danmakuReceivedHandlers.forEach((action) -> action.accept(event));
 
             } else if (message instanceof LiveBeginModel) {
-                liveBeginHandlers.forEach(
-                        (action) -> action.accept(new LiveBeginEvent((LiveBeginModel) message)));
+                StatusChangedEvent event = new StatusChangedEvent()
+                        .setMessage(messageBody)
+                        .setStatus(StatusChangedEvent.Status.Begin)
+                        .setRoomId(roomInit.getRoomId())
+                        .setUid(roomInit.getUid());
+                statusChangedHandlers.forEach(
+                        (action) -> action.accept(event));
 
             } else if (message instanceof LiveEndModel) {
-                liveEndHandlers.forEach(
-                        (action) -> action.accept(new LiveEndEvent((LiveEndModel) message)));
+                StatusChangedEvent event = new StatusChangedEvent()
+                        .setMessage(messageBody)
+                        .setStatus(StatusChangedEvent.Status.End)
+                        .setRoomId(roomInit.getRoomId())
+                        .setUid(roomInit.getUid());
+                statusChangedHandlers.forEach(
+                        (action) -> action.accept(event));
 
             } else {
                 otherHandlers.forEach(
@@ -204,15 +196,8 @@ public class TcpDanmakuClient implements DanmakuClient {
     }
 
     protected Future<Boolean> sendHelloAsync() {
-        JSONObject body = new JSONObject();
-        body.put("uid", 0);
-        body.put("roomid", roomInit.getRoomId());
-        body.put("protover", 0);
-        body.put("platform", "web");
-        body.put("clientver", "2.6.25");
-        body.put("type", 2);
-        body.put("key", danmakuServerInfo.getToken());
-        return sendMessageAsync(ActionType.Hello, body.toJSONString());
+        HelloModel helloModel = HelloModel.newDefault(roomInit.getRoomId(), danmakuServerInfo.getToken());
+        return sendMessageAsync(ActionType.Hello, JSONObject.toJSONString(helloModel));
     }
 
     protected Future<Boolean> sendHeartBeatAsync() {
@@ -327,7 +312,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         }
     }
 
-    private boolean connectWithTrueRoomId(Integer roomId) throws NoNetworkConnectionException {
+    private boolean connectWithTrueRoomId(Long roomId) throws NoNetworkConnectionException {
         try {
             lock.lock();
             if (!closed) {
@@ -398,8 +383,13 @@ public class TcpDanmakuClient implements DanmakuClient {
             }
         }
         disconnect();
-        for (var handler : disconnectHandlers) {
-            handler.accept(new DisconnectEvent(roomInit.getRoomId()));
+        for (var handler : statusChangedHandlers) {
+            StatusChangedEvent event = new StatusChangedEvent()
+                    .setMessage(null)
+                    .setStatus(StatusChangedEvent.Status.Disconnect)
+                    .setRoomId(roomInit.getRoomId())
+                    .setUid(roomInit.getUid());
+            handler.accept(event);
         }
     }
 

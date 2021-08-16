@@ -3,9 +3,10 @@ package org.mokusakura.bilive.core;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.Test;
-import org.mokusakura.bilive.core.api.BilibiliApiClient;
-import org.mokusakura.bilive.core.api.HttpDanmakuApiClient;
+import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
+import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.api.model.RoomInfo;
+import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.model.*;
@@ -34,9 +35,10 @@ public class TestTcpDanmakuClient {
     Double totalPrice = 0.0;
     Map<Integer, Integer> interactTimes = new HashMap<>();
     Map<String, Double> userSentPrice = new HashMap<>();
-    private final BilibiliApiClient apiClient = new HttpDanmakuApiClient(
+    private final BilibiliLiveApiClient apiClient = new HttpLiveApiClient(
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
-    private final Integer connectRoomId = 22508204;
+    private final Integer connectRoomId = 21470918;
+    private DanmakuClient danmakuClient;
     DanmakuWriter writer = new XmlDanmakuWriter();
     private RoomInfo roomInfo;
 
@@ -49,49 +51,16 @@ public class TestTcpDanmakuClient {
 
             roomInfo = apiClient.getRoomInfo(connectRoomId).getData();
             Semaphore semaphore = new Semaphore(0);
-            var build = new TcpDanmakuClient(apiClient);
+            danmakuClient = new TcpDanmakuClient(apiClient);
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmssSSS");
             writer.enable(String.format("C:\\Users\\MokuSakura\\Documents\\%d_%s.xml",
-                                        roomInfo.getShortId() == null || Objects.equals(0,
+                                        roomInfo.getShortId() == null || Objects.equals(0L,
                                                                                         roomInfo.getShortId()) ? roomInfo.getRoomId() : roomInfo.getShortId(),
                                         format.format(new Date(System.currentTimeMillis()))));
-            build.addLiveBeginHandler(liveBeginEvent -> log.debug("Begin"));
-            build.addLiveEndHandler(liveEndEvent -> {
-                try {
-                    writer.close();
-                    build.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-            build.addReceivedHandler(event -> onDanmaku(event.getAbstractDanmaku()));
-            build.addDisconnectHandler(event -> {
-                new Thread(() -> {
-                    try {
-                        Thread.sleep(10000);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                    while (true) {
-                        try {
-                            build.connect(event.getRoomId());
-                            if (build.isConnected()) {
-                                return;
-                            }
-                        } catch (NoNetworkConnectionException | NoRoomFoundException e) {
-                            e.printStackTrace();
-                            try {
-                                Thread.sleep(10000);
-                            } catch (InterruptedException interruptedException) {
-                                interruptedException.printStackTrace();
-                            }
-                        }
-                    }
-                }).start();
-
-            });
+            danmakuClient.addStatusChangedHandler(this::onStatusChanged);
+            danmakuClient.addReceivedHandler(event -> onDanmaku(event.getAbstractDanmaku()));
             ScheduledExecutorService timer = new ScheduledThreadPoolExecutor(1);
-            build.connect(connectRoomId);
+            danmakuClient.connect(connectRoomId);
             timer.scheduleAtFixedRate(this::printValue, 10, 60, TimeUnit.SECONDS);
             timer.scheduleAtFixedRate(
                     () -> log.debug("Memory usage {}", Runtime.getRuntime().totalMemory() / (1024.0 * 1024.0)), 10,
@@ -99,7 +68,7 @@ public class TestTcpDanmakuClient {
                     TimeUnit.SECONDS);
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
-                    build.close();
+                    danmakuClient.close();
                     writer.close();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -112,6 +81,46 @@ public class TestTcpDanmakuClient {
             e.printStackTrace();
         }
 
+    }
+
+    void onStatusChanged(StatusChangedEvent event) {
+        switch (event.getStatus()) {
+            case Begin:
+                log.debug("Begin");
+                break;
+            case End:
+                try {
+                    writer.close();
+                    danmakuClient.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case Disconnect:
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    while (true) {
+                        try {
+                            danmakuClient.connect(event.getRoomId());
+                            if (danmakuClient.isConnected()) {
+                                return;
+                            }
+                        } catch (NoNetworkConnectionException | NoRoomFoundException e) {
+                            e.printStackTrace();
+                            try {
+                                Thread.sleep(10000);
+                            } catch (InterruptedException interruptedException) {
+                                interruptedException.printStackTrace();
+                            }
+                        }
+                    }
+                }).start();
+                break;
+        }
     }
 
     @SneakyThrows

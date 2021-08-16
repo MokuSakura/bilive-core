@@ -6,9 +6,10 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.mokusakura.bilive.core.api.model.RoomInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
-import org.mokusakura.bilive.core.event.*;
+import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
+import org.mokusakura.bilive.core.event.OtherEvent;
+import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.model.ActionType;
-import org.mokusakura.bilive.core.model.MessageReceivedEvent;
 import org.mokusakura.bilive.core.model.ProtocolVersion;
 import org.mokusakura.bilive.core.model.WebSocketHeader;
 
@@ -34,10 +35,8 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     public static final int HEADER_SIZE = 16;
     private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageConverters;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<LiveEndEvent>> danmakuClosedHandlers;
-    private final Set<Consumer<LiveBeginEvent>> liveBeginHandlers;
+    private final Set<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final Set<Consumer<OtherEvent>> otherHandlers;
-    private final Set<Consumer<MessageReceivedEvent>> messageHandlers;
     private final RoomInfo roomInfo;
     private final RoomInit roomInit;
     private final URI uri;
@@ -55,10 +54,8 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
         timer = new ScheduledThreadPoolExecutor(10, (ThreadFactory) Thread::new);
         danmakuReceivedHandlers = new LinkedHashSet<>();
-        danmakuClosedHandlers = new LinkedHashSet<>();
-        liveBeginHandlers = new LinkedHashSet<>();
+        statusChangedHandlers = new LinkedHashSet<>();
         otherHandlers = new LinkedHashSet<>();
-        messageHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(10, 10, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
     }
@@ -74,25 +71,6 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         danmakuReceivedHandlers.add(consumer);
     }
 
-    @Override
-    public Collection<Consumer<LiveEndEvent>> liveEndHandlers() {
-        return this.danmakuClosedHandlers;
-    }
-
-    @Override
-    public void addLiveEndHandler(Consumer<LiveEndEvent> consumer) {
-        this.danmakuClosedHandlers.add(consumer);
-    }
-
-    @Override
-    public Collection<Consumer<LiveBeginEvent>> liveBeginHandlers() {
-        return liveBeginHandlers;
-    }
-
-    @Override
-    public void addLiveBeginHandler(Consumer<LiveBeginEvent> consumer) {
-        liveBeginHandlers.add(consumer);
-    }
 
     @Override
     public Collection<Consumer<OtherEvent>> otherHandlers() {
@@ -105,17 +83,17 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     }
 
     @Override
-    public Collection<Consumer<DisconnectEvent>> disconnectHandlers() {
-        return null;
+    public Collection<Consumer<StatusChangedEvent>> statusChangedHandlers() {
+        return statusChangedHandlers;
     }
 
     @Override
-    public void addDisconnectHandler(Consumer<DisconnectEvent> consumer) {
-
+    public void addStatusChangedHandler(Consumer<StatusChangedEvent> consumer) {
+        statusChangedHandlers.add(consumer);
     }
 
     @Override
-    public void connect(int roomId) {
+    public void connect(long roomId) {
         if (!roomInit.getRoomId().equals(roomId)) {
             throw new IllegalArgumentException();
         }

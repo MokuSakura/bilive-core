@@ -19,7 +19,7 @@ import java.util.Arrays;
  * @author MokuSakura
  */
 @Log4j2
-public class HttpDanmakuApiClient implements BilibiliApiClient {
+public class HttpLiveApiClient implements BilibiliLiveApiClient {
     public static final String HEADER_ACCEPT = "application/json, text/javascript, */*; q=0.01";
     public static final String HEADER_ORIGIN = "https://live.bilibili.com";
     public static final String HEADER_REFERER = "https://live.bilibili.com/";
@@ -32,12 +32,18 @@ public class HttpDanmakuApiClient implements BilibiliApiClient {
     public static final String BILIBILI_LIVE_ROOM_INIT_PATH = "/room/v1/Room/room_init?id=%d";
     private final HttpClient httpClient;
 
-    public HttpDanmakuApiClient(HttpClient httpClient) {
+    public HttpLiveApiClient(HttpClient httpClient) {
         this.httpClient = httpClient;
     }
 
     @Override
-    public BilibiliApiResponse<RoomInfo> getRoomInfo(int roomId) throws NoRoomFoundException,
+    public <T> BilibiliApiResponse<T> get(String fullUrl) {
+        //TODO fix this
+        return null;
+    }
+
+    @Override
+    public BilibiliApiResponse<RoomInfo> getRoomInfo(long roomId) throws NoRoomFoundException,
             NoNetworkConnectionException {
         try {
             return this.get(String.format(BILIBILI_LIVE_ROOM_INFO_PATH, roomId), RoomInfo.class);
@@ -54,7 +60,7 @@ public class HttpDanmakuApiClient implements BilibiliApiClient {
     }
 
     @Override
-    public BilibiliApiResponse<RoomInit> getRoomInit(int roomId) throws NoRoomFoundException,
+    public BilibiliApiResponse<RoomInit> getRoomInit(long roomId) throws NoRoomFoundException,
             NoNetworkConnectionException {
         try {
             return this.get(String.format(BILIBILI_LIVE_ROOM_INIT_PATH, roomId), RoomInit.class);
@@ -71,7 +77,7 @@ public class HttpDanmakuApiClient implements BilibiliApiClient {
     }
 
     @Override
-    public BilibiliApiResponse<UserInfo> getUserInfo(int roomId) throws NoNetworkConnectionException,
+    public BilibiliApiResponse<UserInfo> getUserInfo(long roomId) throws NoNetworkConnectionException,
             NoRoomFoundException {
         try {
             return this.get(String.format(BILIBILI_LIVE_USER_INFO_PATH, roomId), UserInfo.class);
@@ -88,7 +94,7 @@ public class HttpDanmakuApiClient implements BilibiliApiClient {
     }
 
     @Override
-    public BilibiliApiResponse<StreamInfo> getStreamInfo(int roomId) throws NoNetworkConnectionException,
+    public BilibiliApiResponse<StreamInfo> getStreamInfo(long roomId) throws NoNetworkConnectionException,
             NoRoomFoundException {
         try {
             return this.get(String.format(BILIBILI_LIVE_STREAM_INFO_PATH, roomId), StreamInfo.class);
@@ -105,7 +111,8 @@ public class HttpDanmakuApiClient implements BilibiliApiClient {
     }
 
     @Override
-    public BilibiliApiResponse<DanmakuServerInfo> getDanmakuServerInfo(int roomId) throws NoNetworkConnectionException {
+    public BilibiliApiResponse<DanmakuServerInfo> getDanmakuServerInfo(long roomId) throws
+            NoNetworkConnectionException {
         try {
             return this.get(String.format(BILIBILI_LIVE_DANMAKU_INFO_PATH, roomId), DanmakuServerInfo.class);
         } catch (BilibiliApiCodeNotZeroException e) {

@@ -7,11 +7,11 @@ import com.alibaba.fastjson.annotation.JSONField;
  */
 public class RoomInit {
     @JSONField(name = "room_id")
-    private Integer roomId;
+    private Long roomId;
     @JSONField(name = "short_id")
-    private Integer shortId;
+    private Long shortId;
     @JSONField(name = "uid")
-    private Integer uid;
+    private Long uid;
     @JSONField(name = "need_p2p")
     private Integer needP2P;
     @JSONField(name = "is_hidden")
@@ -40,29 +40,29 @@ public class RoomInit {
     private Integer specialType;
 
 
-    public Integer getRoomId() {
+    public Long getRoomId() {
         return roomId;
     }
 
-    public RoomInit setRoomId(Integer roomId) {
+    public RoomInit setRoomId(Long roomId) {
         this.roomId = roomId;
         return this;
     }
 
-    public Integer getShortId() {
+    public Long getShortId() {
         return shortId;
     }
 
-    public RoomInit setShortId(Integer shortId) {
+    public RoomInit setShortId(Long shortId) {
         this.shortId = shortId;
         return this;
     }
 
-    public Integer getUid() {
+    public Long getUid() {
         return uid;
     }
 
-    public RoomInit setUid(Integer uid) {
+    public RoomInit setUid(Long uid) {
         this.uid = uid;
         return this;
     }
