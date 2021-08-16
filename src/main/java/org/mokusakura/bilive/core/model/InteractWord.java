@@ -18,7 +18,7 @@ public class InteractWord extends AbstractDanmaku {
     private Contribution contribution;
     private Integer dmscore;
     private FansMedal fansMedal;
-    private List<Integer> identities = new ArrayList<Integer>();
+    private List<Integer> identities = new ArrayList<>();
     private Integer isSpread;
     private Integer msgType;
     private Integer roomid;

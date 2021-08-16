@@ -1,6 +1,5 @@
 package org.mokusakura.bilive.core.model;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Arrays;
@@ -66,52 +65,6 @@ public class AbstractDanmakuFactory {
      */
     public boolean isRegistered(String cmd) {
         return CMD_MAP.containsKey(cmd);
-    }
-
-    public static void main(String[] args) {
-        AbstractDanmakuFactory abstractDanmakuFactory = AbstractDanmakuFactory.getInstance();
-        GenericBilibiliMessage genericBilibiliMessage = abstractDanmakuFactory.create(
-                "{\n" +
-                        "  \"cmd\": \"INTERACT_WORD\",\n" +
-                        "  \"data\": {\n" +
-                        "\t\"contribution\": {\n" +
-                        "\t  \"grade\": 0\n" +
-                        "\t},\n" +
-                        "\t\"dmscore\": 6,\n" +
-                        "\t\"fans_medal\": {\n" +
-                        "\t  \"anchor_roomid\": 22637261,\n" +
-                        "\t  \"guard_level\": 0,\n" +
-                        "\t  \"icon_id\": 0,\n" +
-                        "\t  \"is_lighted\": 1,\n" +
-                        "\t  \"medal_color\": 6126494,\n" +
-                        "\t  \"medal_color_border\": 6126494,\n" +
-                        "\t  \"medal_color_end\": 6126494,\n" +
-                        "\t  \"medal_color_start\": 6126494,\n" +
-                        "\t  \"medal_level\": 6,\n" +
-                        "\t  \"medal_name\": \"嘉心糖\",\n" +
-                        "\t  \"score\": 3799,\n" +
-                        "\t  \"special\": \"\",\n" +
-                        "\t  \"target_id\": 672328094\n" +
-                        "\t},\n" +
-                        "\t\"identities\": [\n" +
-                        "\t  3,\n" +
-                        "\t  1\n" +
-                        "\t],\n" +
-                        "\t\"is_spread\": 0,\n" +
-                        "\t\"msg_type\": 1,\n" +
-                        "\t\"roomid\": 22508204,\n" +
-                        "\t\"score\": 1629099468304,\n" +
-                        "\t\"spread_desc\": \"\",\n" +
-                        "\t\"spread_info\": \"\",\n" +
-                        "\t\"tail_icon\": 0,\n" +
-                        "\t\"timestamp\": 1629085669,\n" +
-                        "\t\"trigger_time\": 1629085668208827000,\n" +
-                        "\t\"uid\": 6044601,\n" +
-                        "\t\"uname\": \"镇守府の校长\",\n" +
-                        "\t\"uname_color\": \"\"\n" +
-                        "  }\n" +
-                        "}");
-        System.out.println(JSONObject.toJSONString(genericBilibiliMessage));
     }
 
     /**

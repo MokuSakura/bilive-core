@@ -52,6 +52,9 @@ public class XmlDanmakuWriter implements DanmakuWriter {
                     case GuardBuy:
                         xmlWriter.writeStartElement("guard");
                         break;
+                    case InteractWord:
+                        xmlWriter.writeStartElement("iw");
+                        break;
                     default:
                         return null;
                 }
