@@ -17,7 +17,7 @@ public class SendGiftModel extends AbstractDanmaku {
     protected String medalName;
 
 
-    protected SendGiftModel(String json) {
+    public SendGiftModel(String json) {
         var obj = JSONObject.parseObject(json);
         super.uid = obj.getJSONObject("data").getInteger("uid");
         super.timestamp = obj.getJSONObject("data").getLong("timestamp");

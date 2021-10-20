@@ -9,9 +9,9 @@ import org.mokusakura.bilive.core.api.model.RoomInit;
 import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
 import org.mokusakura.bilive.core.event.OtherEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
-import org.mokusakura.bilive.core.model.WebSocketHeader;
-import org.mokusakura.bilive.core.model.WebSocketHeader.ActionType;
-import org.mokusakura.bilive.core.model.WebSocketHeader.ProtocolVersion;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
@@ -33,7 +33,7 @@ import java.util.zip.Inflater;
 @Log4j2
 public class SocketDanmakuClient extends WebSocketClient implements DanmakuClient {
     public static final int HEADER_SIZE = 16;
-    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageConverters;
+    private final Map<Short, BiConsumer<BilibiliWebSocketHeader, ByteBuffer>> messageConverters;
     private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
     private final Set<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final Set<Consumer<OtherEvent>> otherHandlers;
@@ -140,7 +140,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         //FIXME Now the whole data package may contains more than one header-body data.
         //Meaning I may get something like [header,body,header.body...]
         //Need to find a way to solve this.
-        var decodedHeader = WebSocketHeader.newInstance(bytes.array(), true);
+        var decodedHeader = BilibiliWebSocketHeader.newInstance(bytes.array(), true);
         var handler = messageConverters.get(decodedHeader.getProtocolVersion());
         Objects.requireNonNullElse(handler, (a, b) -> {}).accept(decodedHeader, bytes);
     }
@@ -179,14 +179,15 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         return sendMessageAsync(ActionType.HeartBeat, "");
     }
 
-    protected Future<Boolean> sendMessageAsync(ActionType actionType, String body) {
+    protected Future<Boolean> sendMessageAsync(int actionType, String body) {
         return threadPoolExecutor.submit(() -> {
-            log.debug("send " + actionType.name());
+            log.debug("send " + actionType);
             String cbody = body == null ? "" : body;
             var payload = cbody.getBytes(StandardCharsets.UTF_8);
             var size = payload.length + HEADER_SIZE;
             var outputStream = new ByteArrayOutputStream();
-            WebSocketHeader header = WebSocketHeader.newInstance(size, ProtocolVersion.ClientSend, actionType);
+            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(size, ProtocolVersion.ClientSend,
+                                                                                 actionType);
             outputStream.write(header.array());
             outputStream.write(payload);
             super.send(outputStream.toByteArray());
@@ -195,24 +196,24 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
 
     }
 
-    protected void handlePureJson(WebSocketHeader header, ByteBuffer byteBuffer) {
+    protected void handlePureJson(BilibiliWebSocketHeader header, ByteBuffer byteBuffer) {
         log.debug(new String(byteBuffer.array()));
         var length = header.getTotalLength() - header.getHeaderLength();
         assert length <= Integer.MAX_VALUE;
         var data = byteBuffer.array();
-        var bodyData = Arrays.copyOfRange(data, WebSocketHeader.BODY_OFFSET, data.length);
+        var bodyData = Arrays.copyOfRange(data, BilibiliWebSocketHeader.BODY_OFFSET, data.length);
         var json = new String(bodyData, StandardCharsets.UTF_8);
         log.debug(json);
     }
 
-    protected void handleCompressedData(WebSocketHeader header, ByteBuffer byteBuffer) {
+    protected void handleCompressedData(BilibiliWebSocketHeader header, ByteBuffer byteBuffer) {
         var compressedData = byteBuffer.array();
         Inflater inflater = new Inflater();
         long length = header.getTotalLength() - header.getHeaderLength();
         assert length <= Integer.MAX_VALUE;
         byte[] buffer = new byte[1024];
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        inflater.setInput(compressedData, WebSocketHeader.BODY_OFFSET,
+        inflater.setInput(compressedData, BilibiliWebSocketHeader.BODY_OFFSET,
                           compressedData.length - header.getHeaderLength());
         int inflateLength;
         try {

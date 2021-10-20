@@ -17,7 +17,7 @@ public class SCModel extends AbstractDanmaku {
 
     protected Integer keepTime;
 
-    protected SCModel(String json) {
+    public SCModel(String json) {
         var obj = JSONObject.parseObject(json);
         super.messageType = MessageType.SuperChat;
 

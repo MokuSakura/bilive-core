@@ -37,7 +37,7 @@ public class TestTcpDanmakuClient {
     Map<String, Double> userSentPrice = new HashMap<>();
     private final BilibiliLiveApiClient apiClient = new HttpLiveApiClient(
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
-    private final Integer connectRoomId = 21470918;
+    private final Integer connectRoomId = 22389319;
     private DanmakuClient danmakuClient;
     DanmakuWriter writer = new XmlDanmakuWriter();
     private RoomInfo roomInfo;
@@ -51,7 +51,7 @@ public class TestTcpDanmakuClient {
 
             roomInfo = apiClient.getRoomInfo(connectRoomId).getData();
             Semaphore semaphore = new Semaphore(0);
-            danmakuClient = new TcpDanmakuClient(apiClient);
+            danmakuClient = new TcpDanmakuClient(apiClient, DefaultBilibiliMessageFactory.createDefault());
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmssSSS");
             writer.enable(String.format("C:\\Users\\MokuSakura\\Documents\\%d_%s.xml",
                                         roomInfo.getShortId() == null || Objects.equals(0L,
@@ -128,7 +128,7 @@ public class TestTcpDanmakuClient {
         interactTimes.compute(danmaku.getUid(), (uid, num) -> num == null ? 1 : num + 1);
         writer.writeAsync(danmaku);
         if (danmaku instanceof CommentModel) {
-
+            log.debug(((CommentModel) danmaku).getCommentText());
         } else if (danmaku instanceof SendGiftModel) {
             SendGiftModel giftModel = (SendGiftModel) danmaku;
             if (Objects.equals(5, giftModel.getGiftType())) {

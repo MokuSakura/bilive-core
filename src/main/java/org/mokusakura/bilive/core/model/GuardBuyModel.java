@@ -12,7 +12,7 @@ public class GuardBuyModel extends AbstractDanmaku {
     protected Double giftPrice;
 
 
-    protected GuardBuyModel(String json) {
+    public GuardBuyModel(String json) {
         var obj = JSONObject.parseObject(json);
         super.messageType = MessageType.GuardBuy;
         super.uid = obj.getJSONObject("data").getInteger("uid");

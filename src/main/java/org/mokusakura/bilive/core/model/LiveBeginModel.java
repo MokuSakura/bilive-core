@@ -12,7 +12,7 @@ public class LiveBeginModel extends GenericBilibiliMessage {
 
     protected Integer roomId;
 
-    protected LiveBeginModel(String json) {
+    public LiveBeginModel(String json) {
         var obj = JSON.parseObject(json);
         super.messageType = MessageType.LiveStart;
         var integerRoomId = obj.getInteger("roomid");

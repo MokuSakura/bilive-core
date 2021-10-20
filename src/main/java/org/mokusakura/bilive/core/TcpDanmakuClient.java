@@ -10,9 +10,12 @@ import org.mokusakura.bilive.core.event.OtherEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
-import org.mokusakura.bilive.core.model.*;
-import org.mokusakura.bilive.core.model.WebSocketHeader.ActionType;
-import org.mokusakura.bilive.core.model.WebSocketHeader.ProtocolVersion;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
+import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
+import org.mokusakura.bilive.core.model.HelloModel;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -22,11 +25,13 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.zip.Inflater;
 
@@ -38,11 +43,12 @@ public class TcpDanmakuClient implements DanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
     private final BilibiliLiveApiClient apiClient;
-    private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<OtherEvent>> otherHandlers;
-    private final Set<Consumer<StatusChangedEvent>> statusChangedHandlers;
+    private final Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
+    private final Collection<Consumer<OtherEvent>> otherHandlers;
+    private final Collection<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
-    private final Map<ProtocolVersion, BiConsumer<WebSocketHeader, ByteBuffer>> messageConverters;
+    private final BilibiliMessageFactory bilibiliMessageFactory;
+    //    private final Map<Short, BiConsumer<BilibiliWebSocketHeader, ByteBuffer>> messageConverters;
     private final Lock lock;
     private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
@@ -53,19 +59,20 @@ public class TcpDanmakuClient implements DanmakuClient {
     private InputStream inputStream;
     private OutputStream outputStream;
 
-    public TcpDanmakuClient(BilibiliLiveApiClient apiClient) {
+
+    public TcpDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
         this.apiClient = apiClient;
         timer = new ScheduledThreadPoolExecutor(10);
         danmakuReceivedHandlers = new LinkedHashSet<>();
         statusChangedHandlers = new LinkedHashSet<>();
         otherHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
-        messageConverters = new LinkedHashMap<>();
+//        messageConverters = new LinkedHashMap<>();
         lock = new ReentrantLock();
         closed = true;
-        messageConverters.put(ProtocolVersion.PureJson, this::handlePureJson);
-        messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
-        messageConverters.put(ProtocolVersion.CompressedBuffer2, this::handleCompressedData);
+//        messageConverters.put(ProtocolVersion.PureJson, this::handlePureJson);
+//        messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
+        this.bilibiliMessageFactory = bilibiliMessageFactory;
     }
 
 
@@ -129,53 +136,53 @@ public class TcpDanmakuClient implements DanmakuClient {
         disconnect();
     }
 
-    protected void handlePureJson(WebSocketHeader header, ByteBuffer byteBuffer) {
-        if (header.getActionType() != ActionType.GlobalInfo) {
-            return;
-        }
-        var messageBody = new String(byteBuffer.array(), StandardCharsets.UTF_8);
-        try {
-            GenericBilibiliMessage message = GenericBilibiliMessageFactory.getInstance().create(messageBody);
-            if (message == null) {
-                return;
-            }
-            if (message instanceof AbstractDanmaku) {
-                DanmakuReceivedEvent event = new DanmakuReceivedEvent()
-                        .setAbstractDanmaku((AbstractDanmaku) message)
-                        .setDanmakuJson(messageBody)
-                        .setRoomId(roomInit.getRoomId());
-                danmakuReceivedHandlers.forEach((action) -> action.accept(event));
+//    protected void handlePureJson(BilibiliWebSocketHeader header, ByteBuffer byteBuffer) {
+//        if (header.getActionType() != ActionType.GlobalInfo) {
+//            return;
+//        }
+//        var messageBody = new String(byteBuffer.array(), StandardCharsets.UTF_8);
+//        try {
+//            GenericBilibiliMessage message = GenericBilibiliMessageFactory.getInstance().create(messageBody);
+//            if (message == null) {
+//                return;
+//            }
+//            if (message instanceof AbstractDanmaku) {
+//                DanmakuReceivedEvent event = new DanmakuReceivedEvent()
+//                        .setAbstractDanmaku((AbstractDanmaku) message)
+//                        .setDanmakuJson(messageBody)
+//                        .setRoomId(roomInit.getRoomId());
+//                danmakuReceivedHandlers.forEach((action) -> action.accept(event));
+//
+//            } else if (message instanceof LiveBeginModel) {
+//                StatusChangedEvent event = new StatusChangedEvent()
+//                        .setMessage(messageBody)
+//                        .setStatus(StatusChangedEvent.Status.Begin)
+//                        .setRoomId(roomInit.getRoomId())
+//                        .setUid(roomInit.getUid());
+//                statusChangedHandlers.forEach(
+//                        (action) -> action.accept(event));
+//
+//            } else if (message instanceof LiveEndModel) {
+//                StatusChangedEvent event = new StatusChangedEvent()
+//                        .setMessage(messageBody)
+//                        .setStatus(StatusChangedEvent.Status.End)
+//                        .setRoomId(roomInit.getRoomId())
+//                        .setUid(roomInit.getUid());
+//                statusChangedHandlers.forEach(
+//                        (action) -> action.accept(event));
+//
+//            } else {
+//                otherHandlers.forEach(
+//                        (action) -> action.accept(new OtherEvent(message, roomInit.getRoomId())));
+//
+//            }
+//        } catch (Exception e) {
+//            log.error(e.getMessage());
+//            log.error(Arrays.toString(e.getStackTrace()));
+//        }
+//    }
 
-            } else if (message instanceof LiveBeginModel) {
-                StatusChangedEvent event = new StatusChangedEvent()
-                        .setMessage(messageBody)
-                        .setStatus(StatusChangedEvent.Status.Begin)
-                        .setRoomId(roomInit.getRoomId())
-                        .setUid(roomInit.getUid());
-                statusChangedHandlers.forEach(
-                        (action) -> action.accept(event));
-
-            } else if (message instanceof LiveEndModel) {
-                StatusChangedEvent event = new StatusChangedEvent()
-                        .setMessage(messageBody)
-                        .setStatus(StatusChangedEvent.Status.End)
-                        .setRoomId(roomInit.getRoomId())
-                        .setUid(roomInit.getUid());
-                statusChangedHandlers.forEach(
-                        (action) -> action.accept(event));
-
-            } else {
-                otherHandlers.forEach(
-                        (action) -> action.accept(new OtherEvent(message, roomInit.getRoomId())));
-
-            }
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            log.error(Arrays.toString(e.getStackTrace()));
-        }
-    }
-
-    protected void handleCompressedData(WebSocketHeader header, ByteBuffer byteBuffer) {
+    protected void handleCompressedData(BilibiliWebSocketHeader header, ByteBuffer byteBuffer) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             Inflater inflater = new Inflater();
@@ -206,13 +213,14 @@ public class TcpDanmakuClient implements DanmakuClient {
         return sendMessageAsync(ActionType.HeartBeat, "");
     }
 
-    protected Future<Boolean> sendMessageAsync(ActionType actionType, String body) {
+    protected Future<Boolean> sendMessageAsync(int actionType, String body) {
         return threadPoolExecutor.submit(() -> {
 //            log.debug("send {}, {}", actionType, body);
             String cbody = body == null ? "" : body;
             var payload = cbody.getBytes(StandardCharsets.UTF_8);
-            var size = payload.length + WebSocketHeader.HEADER_LENGTH;
-            WebSocketHeader header = WebSocketHeader.newInstance(size, ProtocolVersion.ClientSend, actionType);
+            var size = payload.length + BilibiliWebSocketHeader.HEADER_LENGTH;
+            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(size, ProtocolVersion.ClientSend,
+                                                                                 actionType);
             outputStream.write(header.array());
             outputStream.write(payload);
             outputStream.flush();
@@ -228,10 +236,8 @@ public class TcpDanmakuClient implements DanmakuClient {
      * That means first 16 bytes can be decoded as a header, and the total length of data is equal to
      * the unsigned int value of the first 4 bytes of the data.
      * If ProtocolVersion is {@link ProtocolVersion#CompressedBuffer},
-     * then {@link TcpDanmakuClient#handleCompressedData(WebSocketHeader, ByteBuffer)} will be executed.
+     * then {@link TcpDanmakuClient#handleCompressedData(BilibiliWebSocketHeader, ByteBuffer)} will be executed.
      * After decompress data, this method must be called with decompressed body data.
-     * If ProtocolVersion is {@link ProtocolVersion#PureJson},
-     * then {@link TcpDanmakuClient#handlePureJson(WebSocketHeader, ByteBuffer)} will be executed.
      * </p>
      *
      * @param data- Data to handle
@@ -239,24 +245,34 @@ public class TcpDanmakuClient implements DanmakuClient {
     protected void handleData(byte[] data) {
         // Basic offset. If more than one data package is contained in data,
         // offset will the begin index of the next data package
-        int offset = 0;
-        while (true) {
-            // first 16 bytes. Header data
-            byte[] headSlice = Arrays.copyOfRange(data, offset, offset + WebSocketHeader.HEADER_LENGTH);
-
-            var decodedHeader = WebSocketHeader.newInstance(headSlice, true);
-            // Begin from the 16th byte, end at the index of the 4 bytes unsigned int value of the header.
-            byte[] bodySlice = Arrays.copyOfRange(data, offset + WebSocketHeader.BODY_OFFSET,
-                                                  offset + (int) decodedHeader.getTotalLength());
-            var handler = messageConverters.get(decodedHeader.getProtocolVersion());
-            Objects.requireNonNullElse(handler, (a, b) -> {})
-                    .accept(decodedHeader, ByteBuffer.wrap(bodySlice));
-            if (offset + bodySlice.length + headSlice.length == data.length) {
-                return;
-            }
-            offset += bodySlice.length + headSlice.length;
+//        int offset = 0;
+//        while (true) {
+//            // first 16 bytes. Header data
+//            byte[] headSlice = Arrays.copyOfRange(data,
+//                                                  offset,
+//                                                  offset + BilibiliWebSocketHeader.HEADER_LENGTH);
+//
+//            BilibiliWebSocketHeader decodedHeader = BilibiliWebSocketHeader.newInstance(headSlice, true);
+//            // Begin from the 16th byte, end at the index of the 4 bytes unsigned int value of the header.
+//            byte[] bodySlice = Arrays.copyOfRange(data,
+//                                                  offset + BilibiliWebSocketHeader.BODY_OFFSET,
+//                                                  offset + (int) decodedHeader.getTotalLength());
+//            BiConsumer<BilibiliWebSocketHeader, ByteBuffer> handler =
+//                    messageConverters.get(decodedHeader.getProtocolVersion());
+//            Objects.requireNonNullElse(handler, (a, b) -> {})
+//                    .accept(decodedHeader, ByteBuffer.wrap(bodySlice));
+//            if (offset + bodySlice.length + headSlice.length == data.length) {
+//                return;
+//            }
+//            offset += bodySlice.length + headSlice.length;
+//        }
+        BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(
+                Arrays.copyOfRange(data, 0, BilibiliWebSocketHeader.HEADER_LENGTH));
+        byte[] body = Arrays.copyOfRange(data, BilibiliWebSocketHeader.BODY_OFFSET, data.length);
+        List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
+        for (GenericBilibiliMessage message : messages) {
+            log.debug(message);
         }
-
     }
 
     protected void readThread() {
@@ -284,7 +300,7 @@ public class TcpDanmakuClient implements DanmakuClient {
                         continue;
                     }
 
-                    WebSocketHeader header = WebSocketHeader.newInstance(data, true);
+                    BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(data, true);
                     // Body is not intact. Continue reading until the body is intact.
                     if (data.length < header.getTotalLength()) {
                         continue;

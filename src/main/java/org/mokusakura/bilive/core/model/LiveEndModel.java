@@ -11,7 +11,7 @@ public class LiveEndModel extends GenericBilibiliMessage {
 
     private Integer roomId;
 
-    protected LiveEndModel(String json) {
+    public LiveEndModel(String json) {
         var obj = JSON.parseObject(json);
         super.messageType = MessageType.LiveEnd;
         var integerRoomId = obj.getInteger("roomid");
