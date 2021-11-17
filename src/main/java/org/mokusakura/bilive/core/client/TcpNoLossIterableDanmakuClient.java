@@ -18,7 +18,7 @@ public class TcpNoLossIterableDanmakuClient extends TcpIterableDanmakuClient imp
     public TcpNoLossIterableDanmakuClient(BilibiliLiveApiClient apiClient,
                                           BilibiliMessageFactory messageFactory,
                                           Duration getWaitTime) {
-        super(apiClient, messageFactory, 0, getWaitTime, Duration.ofSeconds(0));
+        super(apiClient, messageFactory, 10000, getWaitTime, Duration.ofSeconds(0));
         this.messageListener = new MessageListener();
     }
 

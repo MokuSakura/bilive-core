@@ -8,7 +8,8 @@ import java.time.Duration;
  * @author MokuSakura
  * <p>
  * This interface doesn't ensure all message will preserved.
- * If next is called not so frequent while too many messages are retrieved, some messages may loss.
+ * If {@link #next()} isn't called so frequent while too many messages are retrieved,
+ * new message will be storged while old messages will loss.
  * </p>
  */
 public interface IterableDanmakuClient extends DanmakuClient {

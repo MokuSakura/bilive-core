@@ -51,7 +51,10 @@ public class TcpIterableDanmakuClient extends AbstractTcpIterableDanmakuClient {
         @Override
         public void accept(GenericBilibiliMessage genericBilibiliMessage) {
             try {
-                blockingQueue.offer(genericBilibiliMessage, setWaitTime.toMillis(), TimeUnit.MILLISECONDS);
+                while (!blockingQueue.offer(genericBilibiliMessage, setWaitTime.toMillis(), TimeUnit.MILLISECONDS)) {
+                    blockingQueue.take();
+                }
+
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

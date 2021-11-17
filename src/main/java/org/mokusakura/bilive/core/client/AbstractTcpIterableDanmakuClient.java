@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 public abstract class AbstractTcpIterableDanmakuClient implements IterableDanmakuClient {
     public static final Duration DEFAULT_GET_WAIT_TIME = Duration.ofSeconds(30);
     public static final int DEFAULT_QUEUE_SIZE = 100;
-    protected final TcpListenableDanmakuClient danmakuClient;
+    protected final ListenableDanmakuClient danmakuClient;
     protected final BilibiliLiveApiClient apiClient;
     protected final BilibiliMessageFactory messageFactory;
     protected final BlockingQueue<GenericBilibiliMessage> blockingQueue;
@@ -30,17 +30,38 @@ public abstract class AbstractTcpIterableDanmakuClient implements IterableDanmak
                                             BilibiliMessageFactory messageFactory,
                                             int queueSize,
                                             Duration getWaitTime) {
+        assert queueSize != 0;
         this.apiClient = apiClient;
         this.messageFactory = messageFactory;
         this.getWaitTime = getWaitTime;
-        this.danmakuClient = new TcpListenableDanmakuClient(this.apiClient, this.messageFactory);
+        this.danmakuClient = this.getListenableDanmakuClient();
         this.queueSize = queueSize;
         this.blockingQueue = this.getBlockingQueue();
     }
 
+    /**
+     * <p>
+     * This method will be called only when the constructor of {@link AbstractTcpIterableDanmakuClient} is called.
+     * So make sure this method won't throw any exception while derived class is not constructed.
+     * </p>
+     *
+     * @return message listener that will be used in {@link ListenableDanmakuClient}
+     */
     protected abstract Consumer<GenericBilibiliMessage> getMessageListener();
 
+    /**
+     * <p>
+     * This method will be called only when the constructor of {@link AbstractTcpIterableDanmakuClient} is called.
+     * So make sure this method won't throw any exception while derived class is not constructed.
+     * </p>
+     *
+     * @return BlockingQueue that will be used to store messages.
+     */
     protected abstract BlockingQueue<GenericBilibiliMessage> getBlockingQueue();
+
+    protected ListenableDanmakuClient getListenableDanmakuClient() {
+        return new TcpListenableDanmakuClient(this.apiClient, this.messageFactory);
+    }
 
     @Override
     public void connect(long roomId) throws NoNetworkConnectionException, NoRoomFoundException {
