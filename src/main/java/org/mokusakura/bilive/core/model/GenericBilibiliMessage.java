@@ -1,40 +1,25 @@
 package org.mokusakura.bilive.core.model;
 
-import java.util.function.Function;
+import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
 
 /**
  * <p>
  * Generic Bilibili Message.<br/>
- * Using {@link GenericBilibiliMessageFactory#create(String)} to create a instance.<br/>
- * Notice that if more inherited classes are defined,
- * call {@link GenericBilibiliMessageFactory#register(String, Function)} to make sure an instance can be created
- * by calling {@link GenericBilibiliMessageFactory#create(String)}
- * from a JSONObject in which the value of key "cmd" is the first parameter of
- * {@link GenericBilibiliMessageFactory#register(String, Function)}
+ * Using {@link BilibiliMessageFactory#create(BilibiliWebSocketFrame)} )} to create a instance.<br/>
  * </p>
  *
  * @author MokuSakura
  */
 public abstract class GenericBilibiliMessage {
 
-    protected MessageType messageType;
+    protected String messageType;
     protected String rawMessage;
 
-
-    public MessageType getDanmakuType() {
+    public String getMessageType() {
         return messageType;
     }
 
-    public GenericBilibiliMessage setDanmakuType(MessageType messageType) {
-        this.messageType = messageType;
-        return this;
-    }
-
-    public MessageType getMessageType() {
-        return messageType;
-    }
-
-    public GenericBilibiliMessage setMessageType(MessageType messageType) {
+    public GenericBilibiliMessage setMessageType(String messageType) {
         this.messageType = messageType;
         return this;
     }

@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core;
+package org.mokusakura.bilive.core.client;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
@@ -6,12 +6,11 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.mokusakura.bilive.core.api.model.RoomInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
-import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
-import org.mokusakura.bilive.core.event.OtherEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
+import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
@@ -31,12 +30,11 @@ import java.util.zip.Inflater;
  * </p>
  */
 @Log4j2
-public class SocketDanmakuClient extends WebSocketClient implements DanmakuClient {
+public class SocketListenableDanmakuClient extends WebSocketClient implements ListenableDanmakuClient {
     public static final int HEADER_SIZE = 16;
     private final Map<Short, BiConsumer<BilibiliWebSocketHeader, ByteBuffer>> messageConverters;
-    private final Set<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Set<Consumer<StatusChangedEvent>> statusChangedHandlers;
-    private final Set<Consumer<OtherEvent>> otherHandlers;
+    private final Set<Consumer<GenericBilibiliMessage>> messageReceivedHandlers;
+    private final Set<Consumer<StatusChangedEvent>> statusChangedListeners;
     private final RoomInfo roomInfo;
     private final RoomInit roomInit;
     private final URI uri;
@@ -44,7 +42,7 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
     private final ScheduledThreadPoolExecutor timer;
 
 
-    public SocketDanmakuClient(URI uri, RoomInit roomInit, RoomInfo roomInfo) {
+    public SocketListenableDanmakuClient(URI uri, RoomInit roomInit, RoomInfo roomInfo) {
         super(uri);
         this.uri = uri;
         this.roomInit = roomInit;
@@ -53,44 +51,32 @@ public class SocketDanmakuClient extends WebSocketClient implements DanmakuClien
         messageConverters.put(ProtocolVersion.PureJson, this::handlePureJson);
         messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
         timer = new ScheduledThreadPoolExecutor(10, (ThreadFactory) Thread::new);
-        danmakuReceivedHandlers = new LinkedHashSet<>();
-        statusChangedHandlers = new LinkedHashSet<>();
-        otherHandlers = new LinkedHashSet<>();
+        messageReceivedHandlers = new LinkedHashSet<>();
+        statusChangedListeners = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(10, 10, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
 
     }
 
-
     @Override
-    public Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers() {
-        return danmakuReceivedHandlers;
+    public void addStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
+        statusChangedListeners.add(consumer);
     }
 
     @Override
-    public void addReceivedHandler(Consumer<DanmakuReceivedEvent> consumer) {
-        danmakuReceivedHandlers.add(consumer);
-    }
-
-
-    @Override
-    public Collection<Consumer<OtherEvent>> otherHandlers() {
-        return otherHandlers;
+    public void addMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+        this.messageReceivedHandlers.add(consumer);
     }
 
     @Override
-    public void addOtherHandler(Consumer<OtherEvent> consumer) {
-        otherHandlers.add(consumer);
+    public boolean removeMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+        return this.messageReceivedHandlers.remove(consumer);
     }
 
     @Override
-    public Collection<Consumer<StatusChangedEvent>> statusChangedHandlers() {
-        return statusChangedHandlers;
+    public boolean removeStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
+        return this.statusChangedListeners.remove(consumer);
     }
 
-    @Override
-    public void addStatusChangedHandler(Consumer<StatusChangedEvent> consumer) {
-        statusChangedHandlers.add(consumer);
-    }
 
     @Override
     public void connect(long roomId) {

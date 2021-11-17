@@ -15,7 +15,7 @@ public class GuardBuyModel extends AbstractDanmaku {
     public GuardBuyModel(String json) {
         var obj = JSONObject.parseObject(json);
         super.messageType = MessageType.GuardBuy;
-        super.uid = obj.getJSONObject("data").getInteger("uid");
+        super.uid = obj.getJSONObject("data").getLong("uid");
         super.username = obj.getJSONObject("data").getString("username");
         super.timestamp = obj.getJSONObject("data").getLong("start_time");
         this.guardLevel = obj.getJSONObject("data").getInteger("guard_level");

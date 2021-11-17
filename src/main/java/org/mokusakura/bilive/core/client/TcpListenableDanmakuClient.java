@@ -1,15 +1,14 @@
-package org.mokusakura.bilive.core;
+package org.mokusakura.bilive.core.client;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
-import org.mokusakura.bilive.core.event.DanmakuReceivedEvent;
-import org.mokusakura.bilive.core.event.OtherEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
+import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
@@ -17,12 +16,10 @@ import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 import org.mokusakura.bilive.core.model.HelloModel;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
@@ -33,18 +30,16 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.zip.Inflater;
 
 /**
  * @author MokuSakura
  */
 @Log4j2
-public class TcpDanmakuClient implements DanmakuClient {
+public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
     private final BilibiliLiveApiClient apiClient;
-    private final Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers;
-    private final Collection<Consumer<OtherEvent>> otherHandlers;
+    private final Collection<Consumer<GenericBilibiliMessage>> messageReceivedListeners;
     private final Collection<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
     private final BilibiliMessageFactory bilibiliMessageFactory;
@@ -60,53 +55,37 @@ public class TcpDanmakuClient implements DanmakuClient {
     private OutputStream outputStream;
 
 
-    public TcpDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
+    public TcpListenableDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
         this.apiClient = apiClient;
         timer = new ScheduledThreadPoolExecutor(10);
-        danmakuReceivedHandlers = new LinkedHashSet<>();
+        messageReceivedListeners = new LinkedHashSet<>();
         statusChangedHandlers = new LinkedHashSet<>();
-        otherHandlers = new LinkedHashSet<>();
         threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
-//        messageConverters = new LinkedHashMap<>();
         lock = new ReentrantLock();
         closed = true;
-//        messageConverters.put(ProtocolVersion.PureJson, this::handlePureJson);
-//        messageConverters.put(ProtocolVersion.CompressedBuffer, this::handleCompressedData);
+
         this.bilibiliMessageFactory = bilibiliMessageFactory;
     }
 
 
     @Override
-    public Collection<Consumer<DanmakuReceivedEvent>> danmakuReceivedHandlers() {
-        return danmakuReceivedHandlers;
-    }
-
-
-    @Override
-    public Collection<Consumer<OtherEvent>> otherHandlers() {
-        return otherHandlers;
+    public void addMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+        messageReceivedListeners.add(consumer);
     }
 
     @Override
-    public Collection<Consumer<StatusChangedEvent>> statusChangedHandlers() {
-        return statusChangedHandlers;
+    public void addStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
+        statusChangedHandlers.add(consumer);
     }
 
     @Override
-    public void addReceivedHandler(Consumer<DanmakuReceivedEvent> consumer) {
-        danmakuReceivedHandlers.add(consumer);
+    public boolean removeMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+        return this.messageReceivedListeners.remove(consumer);
     }
 
-
     @Override
-    public void addOtherHandler(Consumer<OtherEvent> consumer) {
-        otherHandlers.add(consumer);
-    }
-
-
-    @Override
-    public void addStatusChangedHandler(Consumer<StatusChangedEvent> consumer) {
-
+    public boolean removeStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
+        return this.statusChangedHandlers.remove(consumer);
     }
 
     @Override
@@ -134,74 +113,6 @@ public class TcpDanmakuClient implements DanmakuClient {
     @Override
     public void close() throws IOException {
         disconnect();
-    }
-
-//    protected void handlePureJson(BilibiliWebSocketHeader header, ByteBuffer byteBuffer) {
-//        if (header.getActionType() != ActionType.GlobalInfo) {
-//            return;
-//        }
-//        var messageBody = new String(byteBuffer.array(), StandardCharsets.UTF_8);
-//        try {
-//            GenericBilibiliMessage message = GenericBilibiliMessageFactory.getInstance().create(messageBody);
-//            if (message == null) {
-//                return;
-//            }
-//            if (message instanceof AbstractDanmaku) {
-//                DanmakuReceivedEvent event = new DanmakuReceivedEvent()
-//                        .setAbstractDanmaku((AbstractDanmaku) message)
-//                        .setDanmakuJson(messageBody)
-//                        .setRoomId(roomInit.getRoomId());
-//                danmakuReceivedHandlers.forEach((action) -> action.accept(event));
-//
-//            } else if (message instanceof LiveBeginModel) {
-//                StatusChangedEvent event = new StatusChangedEvent()
-//                        .setMessage(messageBody)
-//                        .setStatus(StatusChangedEvent.Status.Begin)
-//                        .setRoomId(roomInit.getRoomId())
-//                        .setUid(roomInit.getUid());
-//                statusChangedHandlers.forEach(
-//                        (action) -> action.accept(event));
-//
-//            } else if (message instanceof LiveEndModel) {
-//                StatusChangedEvent event = new StatusChangedEvent()
-//                        .setMessage(messageBody)
-//                        .setStatus(StatusChangedEvent.Status.End)
-//                        .setRoomId(roomInit.getRoomId())
-//                        .setUid(roomInit.getUid());
-//                statusChangedHandlers.forEach(
-//                        (action) -> action.accept(event));
-//
-//            } else {
-//                otherHandlers.forEach(
-//                        (action) -> action.accept(new OtherEvent(message, roomInit.getRoomId())));
-//
-//            }
-//        } catch (Exception e) {
-//            log.error(e.getMessage());
-//            log.error(Arrays.toString(e.getStackTrace()));
-//        }
-//    }
-
-    protected void handleCompressedData(BilibiliWebSocketHeader header, ByteBuffer byteBuffer) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            Inflater inflater = new Inflater();
-            byte[] buffer = new byte[1024];
-            inflater.setInput(byteBuffer.array(), 0, byteBuffer.array().length);
-            int inflateLength;
-
-            while ((inflateLength = inflater.inflate(buffer, 0, buffer.length)) != 0) {
-                baos.write(buffer, 0, inflateLength);
-            }
-            inflater.end();
-        } catch (Exception e) {
-            log.error(Arrays.toString(e.getStackTrace()));
-            log.error(e.getMessage());
-            return;
-        }
-        var decompressedData = baos.toByteArray();
-        handleData(decompressedData);
-//        handlePureJson(header, Arrays.copyOfRange(decompressedData, 0, decompressedData.length));
     }
 
     protected Future<Boolean> sendHelloAsync() {
@@ -236,42 +147,28 @@ public class TcpDanmakuClient implements DanmakuClient {
      * That means first 16 bytes can be decoded as a header, and the total length of data is equal to
      * the unsigned int value of the first 4 bytes of the data.
      * If ProtocolVersion is {@link ProtocolVersion#CompressedBuffer},
-     * then {@link TcpDanmakuClient#handleCompressedData(BilibiliWebSocketHeader, ByteBuffer)} will be executed.
      * After decompress data, this method must be called with decompressed body data.
      * </p>
      *
      * @param data- Data to handle
      */
     protected void handleData(byte[] data) {
-        // Basic offset. If more than one data package is contained in data,
-        // offset will the begin index of the next data package
-//        int offset = 0;
-//        while (true) {
-//            // first 16 bytes. Header data
-//            byte[] headSlice = Arrays.copyOfRange(data,
-//                                                  offset,
-//                                                  offset + BilibiliWebSocketHeader.HEADER_LENGTH);
-//
-//            BilibiliWebSocketHeader decodedHeader = BilibiliWebSocketHeader.newInstance(headSlice, true);
-//            // Begin from the 16th byte, end at the index of the 4 bytes unsigned int value of the header.
-//            byte[] bodySlice = Arrays.copyOfRange(data,
-//                                                  offset + BilibiliWebSocketHeader.BODY_OFFSET,
-//                                                  offset + (int) decodedHeader.getTotalLength());
-//            BiConsumer<BilibiliWebSocketHeader, ByteBuffer> handler =
-//                    messageConverters.get(decodedHeader.getProtocolVersion());
-//            Objects.requireNonNullElse(handler, (a, b) -> {})
-//                    .accept(decodedHeader, ByteBuffer.wrap(bodySlice));
-//            if (offset + bodySlice.length + headSlice.length == data.length) {
-//                return;
-//            }
-//            offset += bodySlice.length + headSlice.length;
-//        }
         BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(
                 Arrays.copyOfRange(data, 0, BilibiliWebSocketHeader.HEADER_LENGTH));
         byte[] body = Arrays.copyOfRange(data, BilibiliWebSocketHeader.BODY_OFFSET, data.length);
         List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
+        callMessageReceivedListeners(messages);
+    }
+
+    protected void callMessageReceivedListeners(List<GenericBilibiliMessage> messages) {
         for (GenericBilibiliMessage message : messages) {
-            log.debug(message);
+            try {
+                for (Consumer<GenericBilibiliMessage> consumer : this.messageReceivedListeners) {
+                    consumer.accept(message);
+                }
+            } catch (Exception e) {
+                log.error("{} {}", e.getMessage(), Arrays.toString(e.getStackTrace()));
+            }
         }
     }
 

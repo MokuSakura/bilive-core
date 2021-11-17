@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core;
+package org.mokusakura.bilive.core.factory;
 
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.model.*;
@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 @Log4j2
 public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
     private final Map<String, Function<String, GenericBilibiliMessage>> cmdConstructorMap = new HashMap<>();
-    private final Pattern cmdPattern = Pattern.compile(
+    private static final Pattern CMD_PATTERN = Pattern.compile(
             "(?=[^\\\\])\"cmd(?=[^\\\\])\":.*?(?=[^\\\\])\"(.*?)(?=[^\\\\])\"");
 
     private JsonBilibiliMessageFactory() {}
@@ -27,7 +27,7 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
         res.register("LIVE", LiveBeginModel::new);
         res.register("PREPARING", LiveEndModel::new);
         res.register("SUPER_CHAT_MESSAGE", SCModel::new);
-        res.register("SEND_GIFT", SendGiftModel::new);
+        res.register("SEND_GIFT", SendGiftModel::createSendGiftModel);
         res.register("INTERACT_WORD", InteractWord::createInteractWord);
         return res;
     }
@@ -44,6 +44,14 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
         return cmdConstructorMap.put(cmd, constructor) == null ? 1 : 0;
     }
 
+    public final int register(Map<String, Function<String, GenericBilibiliMessage>> map) {
+        int count = 0;
+        for (Map.Entry<String, Function<String, GenericBilibiliMessage>> entry : map.entrySet()) {
+            count += this.register(entry.getKey(), entry.getValue());
+        }
+        return count;
+    }
+
     @Override
     public List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame) {
         if (frame.getWebSocketHeader().getProtocolVersion() != BilibiliWebSocketHeader.ProtocolVersion.PureJson) {
@@ -54,7 +62,7 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
         GenericBilibiliMessage message = null;
         try {
 
-            Matcher matcher = cmdPattern.matcher(json);
+            Matcher matcher = CMD_PATTERN.matcher(json);
 
             if (!matcher.find()) {
                 return null;

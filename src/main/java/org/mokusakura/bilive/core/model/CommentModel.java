@@ -20,7 +20,7 @@ public class CommentModel extends AbstractDanmaku {
     public CommentModel(String json) {
         var obj = JSONObject.parseObject(json);
         super.messageType = MessageType.Comment;
-        super.uid = obj.getJSONArray("info").getJSONArray(2).getInteger(0);
+        super.uid = obj.getJSONArray("info").getJSONArray(2).getLong(0);
         super.username = obj.getJSONArray("info").getJSONArray(2).getString(1);
         super.timestamp = obj.getJSONArray("info").getJSONObject(9).getLong("ts");
 

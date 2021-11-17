@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core;
+package org.mokusakura.bilive.core.factory;
 
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;

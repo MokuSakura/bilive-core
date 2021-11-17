@@ -1,7 +1,8 @@
-package org.mokusakura.bilive.core;
+package org.mokusakura.bilive.core.writer;
 
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.model.AbstractDanmaku;
+import org.mokusakura.bilive.core.model.MessageType;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -39,20 +40,20 @@ public class XmlDanmakuWriter implements DanmakuWriter {
                 if (xmlWriter == null) {
                     return null;
                 }
-                switch (danmaku.getDanmakuType()) {
-                    case Comment:
+                switch (danmaku.getMessageType()) {
+                    case MessageType.Comment:
                         xmlWriter.writeStartElement("d");
                         break;
-                    case GiftSend:
+                    case MessageType.GiftSend:
                         xmlWriter.writeStartElement("gift");
                         break;
-                    case SuperChat:
+                    case MessageType.SuperChat:
                         xmlWriter.writeStartElement("sc");
                         break;
-                    case GuardBuy:
+                    case MessageType.GuardBuy:
                         xmlWriter.writeStartElement("guard");
                         break;
-                    case InteractWord:
+                    case MessageType.InteractWord:
                         xmlWriter.writeStartElement("iw");
                         break;
                     default:

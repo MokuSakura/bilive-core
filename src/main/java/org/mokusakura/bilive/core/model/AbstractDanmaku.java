@@ -19,7 +19,7 @@ public abstract class AbstractDanmaku extends GenericBilibiliMessage {
         GUARD_NAME_LEVEL_MAP.put("舰长", 3);
     }
 
-    protected Integer uid;
+    protected Long uid;
     protected String username;
     protected Long timestamp;
 
@@ -31,11 +31,11 @@ public abstract class AbstractDanmaku extends GenericBilibiliMessage {
         return GUARD_NAME_LEVEL_MAP.get(guardName);
     }
 
-    public Integer getUid() {
+    public Long getUid() {
         return uid;
     }
 
-    public AbstractDanmaku setUid(Integer uid) {
+    public AbstractDanmaku setUid(Long uid) {
         this.uid = uid;
         return this;
     }
@@ -46,15 +46,6 @@ public abstract class AbstractDanmaku extends GenericBilibiliMessage {
 
     public AbstractDanmaku setUsername(String username) {
         this.username = username;
-        return this;
-    }
-
-    public MessageType getDanmakuType() {
-        return messageType;
-    }
-
-    public AbstractDanmaku setDanmakuType(MessageType messageType) {
-        this.messageType = messageType;
         return this;
     }
 

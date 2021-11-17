@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core;
+package org.mokusakura.bilive.core.factory;
 
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
@@ -19,7 +19,10 @@ public class DefaultBilibiliMessageFactory implements BilibiliMessageFactory {
 
     public static DefaultBilibiliMessageFactory createDefault() {
         DefaultBilibiliMessageFactory res = new DefaultBilibiliMessageFactory();
-        res.register(BilibiliWebSocketHeader.ProtocolVersion.PureJson, JsonBilibiliMessageFactory.createDefault());
+
+        res.register(BilibiliWebSocketHeader.ProtocolVersion.PureJson,
+                     JsonBilibiliMessageFactory.createDefault());
+
         res.register(BilibiliWebSocketHeader.ProtocolVersion.CompressedBuffer,
                      new CompressedBilibiliMessageFactory(res));
         return res;

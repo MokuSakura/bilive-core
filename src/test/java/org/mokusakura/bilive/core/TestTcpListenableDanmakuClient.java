@@ -6,10 +6,15 @@ import org.junit.jupiter.api.Test;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.api.model.RoomInfo;
+import org.mokusakura.bilive.core.client.ListenableDanmakuClient;
+import org.mokusakura.bilive.core.client.TcpListenableDanmakuClient;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
+import org.mokusakura.bilive.core.factory.DefaultBilibiliMessageFactory;
 import org.mokusakura.bilive.core.model.*;
+import org.mokusakura.bilive.core.writer.DanmakuWriter;
+import org.mokusakura.bilive.core.writer.XmlDanmakuWriter;
 
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -31,18 +36,18 @@ import java.util.concurrent.TimeUnit;
 
 @Log4j2
 @SuppressWarnings("all")
-public class TestTcpDanmakuClient {
+public class TestTcpListenableDanmakuClient {
     Double totalPrice = 0.0;
-    Map<Integer, Integer> interactTimes = new HashMap<>();
+    Map<Long, Integer> interactTimes = new HashMap<>();
     Map<String, Double> userSentPrice = new HashMap<>();
     private final BilibiliLiveApiClient apiClient = new HttpLiveApiClient(
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
     private final Integer connectRoomId = 22389319;
-    private DanmakuClient danmakuClient;
+    private ListenableDanmakuClient danmakuClient;
     DanmakuWriter writer = new XmlDanmakuWriter();
     private RoomInfo roomInfo;
 
-    public TestTcpDanmakuClient() {
+    public TestTcpListenableDanmakuClient() {
     }
 
     @Test
@@ -51,14 +56,14 @@ public class TestTcpDanmakuClient {
 
             roomInfo = apiClient.getRoomInfo(connectRoomId).getData();
             Semaphore semaphore = new Semaphore(0);
-            danmakuClient = new TcpDanmakuClient(apiClient, DefaultBilibiliMessageFactory.createDefault());
+            danmakuClient = new TcpListenableDanmakuClient(apiClient, DefaultBilibiliMessageFactory.createDefault());
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmssSSS");
             writer.enable(String.format("C:\\Users\\MokuSakura\\Documents\\%d_%s.xml",
                                         roomInfo.getShortId() == null || Objects.equals(0L,
                                                                                         roomInfo.getShortId()) ? roomInfo.getRoomId() : roomInfo.getShortId(),
                                         format.format(new Date(System.currentTimeMillis()))));
-            danmakuClient.addStatusChangedHandler(this::onStatusChanged);
-            danmakuClient.addReceivedHandler(event -> onDanmaku(event.getAbstractDanmaku()));
+            danmakuClient.addStatusChangedListener(this::onStatusChanged);
+            danmakuClient.addMessageReceivedListener(event -> onMessage(event));
             ScheduledExecutorService timer = new ScheduledThreadPoolExecutor(1);
             danmakuClient.connect(connectRoomId);
             timer.scheduleAtFixedRate(this::printValue, 10, 60, TimeUnit.SECONDS);
@@ -124,7 +129,11 @@ public class TestTcpDanmakuClient {
     }
 
     @SneakyThrows
-    void onDanmaku(AbstractDanmaku danmaku) {
+    void onMessage(GenericBilibiliMessage message) {
+        if (!(message instanceof AbstractDanmaku)) {
+            return;
+        }
+        AbstractDanmaku danmaku = (AbstractDanmaku) message;
         interactTimes.compute(danmaku.getUid(), (uid, num) -> num == null ? 1 : num + 1);
         writer.writeAsync(danmaku);
         if (danmaku instanceof CommentModel) {
@@ -134,12 +143,12 @@ public class TestTcpDanmakuClient {
             if (Objects.equals(5, giftModel.getGiftType())) {
                 return;
             }
-            log.debug("{} send {}×{}", giftModel.getUsername(), giftModel.getGiftName(), giftModel.getGiftNumber());
+            log.debug("{} send {}×{}", giftModel.getUsername(), giftModel.getGiftName(), giftModel.getNum());
             userSentPrice.compute(giftModel.getUsername(), (uid, price) ->
                     price == null ?
-                            giftModel.getGiftPrice() * giftModel.getGiftNumber() :
-                            price + giftModel.getGiftPrice() * giftModel.getGiftNumber());
-            totalPrice += giftModel.getGiftPrice() * giftModel.getGiftNumber();
+                            giftModel.getPrice() * giftModel.getNum() :
+                            price + giftModel.getPrice() * giftModel.getNum());
+            totalPrice += giftModel.getPrice() * giftModel.getNum();
         } else if (danmaku instanceof GuardBuyModel) {
             GuardBuyModel guardBuyModel = (GuardBuyModel) danmaku;
             log.debug("{} buy {}", guardBuyModel.getUid(), guardBuyModel.getGuardName());

@@ -3,22 +3,22 @@ package org.mokusakura.bilive.core.model;
 /**
  * @author MokuSakura
  */
-public enum MessageType {
+public class MessageType {
     // 彈幕
-    Comment,
+    public static final String Comment = "Comment";
     // 禮物
-    GiftSend,
+    public static final String GiftSend = "GiftSend";
     // 直播開始
-    LiveStart,
+    public static final String LiveStart = "LiveStart";
     // 直播結束
-    LiveEnd,
+    public static final String LiveEnd = "LiveEnd";
     // 其他
-    Unknown,
+    public static final String Unknown = "Unknown";
     // 购买船票（上船）
-    GuardBuy,
+    public static final String GuardBuy = "GuardBuy";
     // SuperChat
-    SuperChat,
+    public static final String SuperChat = "SuperChat";
     // 房间信息更新
-    RoomChange,
-    InteractWord
+    public static final String RoomChange = "RoomChange";
+    public static final String InteractWord = "InteractWord";
 }
