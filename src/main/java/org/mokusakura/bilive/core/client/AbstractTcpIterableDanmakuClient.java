@@ -1,6 +1,7 @@
 package org.mokusakura.bilive.core.client;
 
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
+import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
@@ -21,7 +22,7 @@ public abstract class AbstractTcpIterableDanmakuClient implements IterableDanmak
     protected final ListenableDanmakuClient danmakuClient;
     protected final BilibiliLiveApiClient apiClient;
     protected final BilibiliMessageFactory messageFactory;
-    protected final BlockingQueue<GenericBilibiliMessage> blockingQueue;
+    protected final BlockingQueue<MessageReceivedEvent> blockingQueue;
     protected final int queueSize;
     protected Duration getWaitTime;
 
@@ -41,13 +42,13 @@ public abstract class AbstractTcpIterableDanmakuClient implements IterableDanmak
 
     /**
      * <p>
-     * This method will be called only when the constructor of {@link AbstractTcpIterableDanmakuClient} is called.
+     * This method will be called only when the {@link #connect(long)} is called.
      * So make sure this method won't throw any exception while derived class is not constructed.
      * </p>
      *
      * @return message listener that will be used in {@link ListenableDanmakuClient}
      */
-    protected abstract Consumer<GenericBilibiliMessage> getMessageListener();
+    protected abstract Consumer<MessageReceivedEvent> getMessageListener();
 
     /**
      * <p>
@@ -57,8 +58,16 @@ public abstract class AbstractTcpIterableDanmakuClient implements IterableDanmak
      *
      * @return BlockingQueue that will be used to store messages.
      */
-    protected abstract BlockingQueue<GenericBilibiliMessage> getBlockingQueue();
+    protected abstract BlockingQueue<MessageReceivedEvent> getBlockingQueue();
 
+    /**
+     * <p>
+     * This method will be called only when the constructor of {@link AbstractTcpIterableDanmakuClient} is called.
+     * So make sure this method won't throw any exception while derived class is not constructed.
+     * </p>
+     *
+     * @return ListenableDanmakuClient that will be used.
+     */
     protected ListenableDanmakuClient getListenableDanmakuClient() {
         return new TcpListenableDanmakuClient(this.apiClient, this.messageFactory);
     }
@@ -92,7 +101,8 @@ public abstract class AbstractTcpIterableDanmakuClient implements IterableDanmak
 
     @Override
     public GenericBilibiliMessage next(Duration duration) throws InterruptedException {
-        return blockingQueue.poll(duration.toMillis(), TimeUnit.MILLISECONDS);
+        MessageReceivedEvent event = blockingQueue.poll(duration.toMillis(), TimeUnit.MILLISECONDS);
+        return event == null ? null : event.getMessage();
     }
 
     @Override

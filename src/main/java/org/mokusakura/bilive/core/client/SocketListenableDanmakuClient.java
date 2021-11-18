@@ -6,11 +6,11 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.mokusakura.bilive.core.api.model.RoomInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
+import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
-import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
@@ -33,7 +33,7 @@ import java.util.zip.Inflater;
 public class SocketListenableDanmakuClient extends WebSocketClient implements ListenableDanmakuClient {
     public static final int HEADER_SIZE = 16;
     private final Map<Short, BiConsumer<BilibiliWebSocketHeader, ByteBuffer>> messageConverters;
-    private final Set<Consumer<GenericBilibiliMessage>> messageReceivedHandlers;
+    private final Set<Consumer<MessageReceivedEvent>> messageReceivedHandlers;
     private final Set<Consumer<StatusChangedEvent>> statusChangedListeners;
     private final RoomInfo roomInfo;
     private final RoomInit roomInit;
@@ -63,12 +63,12 @@ public class SocketListenableDanmakuClient extends WebSocketClient implements Li
     }
 
     @Override
-    public void addMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+    public void addMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
         this.messageReceivedHandlers.add(consumer);
     }
 
     @Override
-    public boolean removeMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+    public boolean removeMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
         return this.messageReceivedHandlers.remove(consumer);
     }
 

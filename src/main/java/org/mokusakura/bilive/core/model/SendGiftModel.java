@@ -1,5 +1,6 @@
 package org.mokusakura.bilive.core.model;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.annotation.JSONField;
 
@@ -51,9 +52,11 @@ public class SendGiftModel extends AbstractDanmaku {
     private long totalCoin;
     private String uname;
 
-    public static SendGiftModel createSendGiftModel(String json) {
-        SendGiftModel res = JSONObject.parseObject(json, SendGiftModel.class);
-        res.setUsername(res.getUname()).setMessageType("SendGiftModel").setRawMessage(json);
+    public static SendGiftModel createSendGiftModel(String jsonStr) {
+        JSONObject jsonObject = JSON.parseObject(jsonStr);
+        JSONObject json = jsonObject.getJSONObject("data");
+        SendGiftModel res = json.toJavaObject(SendGiftModel.class);
+        res.setUsername(res.getUname()).setMessageType("SendGiftModel").setRawMessage(jsonStr);
         return res;
     }
 

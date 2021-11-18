@@ -1,8 +1,8 @@
 package org.mokusakura.bilive.core.client;
 
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
+import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
-import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
 import java.time.Duration;
 import java.util.concurrent.BlockingQueue;
@@ -29,18 +29,18 @@ public class TcpNoLossIterableDanmakuClient extends TcpIterableDanmakuClient imp
     }
 
     @Override
-    protected Consumer<GenericBilibiliMessage> getMessageListener() {
+    protected Consumer<MessageReceivedEvent> getMessageListener() {
         return this.messageListener;
     }
 
     @Override
-    protected BlockingQueue<GenericBilibiliMessage> getBlockingQueue() {
+    protected BlockingQueue<MessageReceivedEvent> getBlockingQueue() {
         return new LinkedBlockingQueue<>();
     }
 
-    protected class NoLossMessageListener implements Consumer<GenericBilibiliMessage> {
+    protected class NoLossMessageListener implements Consumer<MessageReceivedEvent> {
         @Override
-        public void accept(GenericBilibiliMessage genericBilibiliMessage) {
+        public void accept(MessageReceivedEvent genericBilibiliMessage) {
             try {
                 blockingQueue.put(genericBilibiliMessage);
             } catch (InterruptedException e) {

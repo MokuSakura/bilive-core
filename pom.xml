@@ -5,7 +5,7 @@
     <groupId>org.mokusakura</groupId>
     <packaging>jar</packaging>
     <artifactId>bilive-core</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <name>core</name>
     <description>Core library of BiLive</description>
 

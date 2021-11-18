@@ -5,6 +5,7 @@ import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
+import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
@@ -39,7 +40,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
     private final BilibiliLiveApiClient apiClient;
-    private final Collection<Consumer<GenericBilibiliMessage>> messageReceivedListeners;
+    private final Collection<Consumer<MessageReceivedEvent>> messageReceivedListeners;
     private final Collection<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
     private final BilibiliMessageFactory bilibiliMessageFactory;
@@ -69,7 +70,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
 
 
     @Override
-    public void addMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+    public void addMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
         messageReceivedListeners.add(consumer);
     }
 
@@ -79,7 +80,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
     }
 
     @Override
-    public boolean removeMessageReceivedListener(Consumer<GenericBilibiliMessage> consumer) {
+    public boolean removeMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
         return this.messageReceivedListeners.remove(consumer);
     }
 
@@ -156,20 +157,26 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
         BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(
                 Arrays.copyOfRange(data, 0, BilibiliWebSocketHeader.HEADER_LENGTH));
         byte[] body = Arrays.copyOfRange(data, BilibiliWebSocketHeader.BODY_OFFSET, data.length);
+        System.out.printf("%d:%s%n", header.getProtocolVersion(), new String(body));
         List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
         callMessageReceivedListeners(messages);
     }
 
     protected void callMessageReceivedListeners(List<GenericBilibiliMessage> messages) {
         for (GenericBilibiliMessage message : messages) {
+            MessageReceivedEvent event = createMessageEvent(message);
             try {
-                for (Consumer<GenericBilibiliMessage> consumer : this.messageReceivedListeners) {
-                    consumer.accept(message);
+                for (Consumer<MessageReceivedEvent> consumer : this.messageReceivedListeners) {
+                    consumer.accept(event);
                 }
             } catch (Exception e) {
                 log.error("{} {}", e.getMessage(), Arrays.toString(e.getStackTrace()));
             }
         }
+    }
+
+    protected MessageReceivedEvent createMessageEvent(GenericBilibiliMessage message) {
+        return new MessageReceivedEvent().setMessage(message);
     }
 
     protected void readThread() {

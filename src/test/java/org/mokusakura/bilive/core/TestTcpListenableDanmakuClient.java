@@ -42,7 +42,7 @@ public class TestTcpListenableDanmakuClient {
     Map<String, Double> userSentPrice = new HashMap<>();
     private final BilibiliLiveApiClient apiClient = new HttpLiveApiClient(
             HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
-    private final Integer connectRoomId = 22389319;
+    private final Integer connectRoomId = 21452505;
     private ListenableDanmakuClient danmakuClient;
     DanmakuWriter writer = new XmlDanmakuWriter();
     private RoomInfo roomInfo;
@@ -63,7 +63,7 @@ public class TestTcpListenableDanmakuClient {
                                                                                         roomInfo.getShortId()) ? roomInfo.getRoomId() : roomInfo.getShortId(),
                                         format.format(new Date(System.currentTimeMillis()))));
             danmakuClient.addStatusChangedListener(this::onStatusChanged);
-            danmakuClient.addMessageReceivedListener(event -> onMessage(event));
+            danmakuClient.addMessageReceivedListener(event -> onMessage(event.getMessage()));
             ScheduledExecutorService timer = new ScheduledThreadPoolExecutor(1);
             danmakuClient.connect(connectRoomId);
             timer.scheduleAtFixedRate(this::printValue, 10, 60, TimeUnit.SECONDS);
@@ -130,6 +130,7 @@ public class TestTcpListenableDanmakuClient {
 
     @SneakyThrows
     void onMessage(GenericBilibiliMessage message) {
+        System.out.println(message.getRawMessage());
         if (!(message instanceof AbstractDanmaku)) {
             return;
         }
