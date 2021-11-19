@@ -157,7 +157,6 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
         BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(
                 Arrays.copyOfRange(data, 0, BilibiliWebSocketHeader.HEADER_LENGTH));
         byte[] body = Arrays.copyOfRange(data, BilibiliWebSocketHeader.BODY_OFFSET, data.length);
-        System.out.printf("%d:%s%n", header.getProtocolVersion(), new String(body));
         List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
         callMessageReceivedListeners(messages);
     }

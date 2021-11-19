@@ -1,0 +1,12 @@
+{
+  "cmd": "ROOM_CHANGE",
+  "data": {
+	"title": "测试用2",
+	"area_id": 372,
+	"parent_area_id": 11,
+	"area_name": "陪伴学习",
+	"parent_area_name": "学习",
+	"live_key": "183098067901036888",
+	"sub_session_key": "183098067901036888sub_time:1637288805"
+  }
+}
