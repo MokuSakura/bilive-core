@@ -1,0 +1,54 @@
+{
+  "code": 0,
+  "msg": "success",
+  "message": "success",
+  "data": {
+	"info": {
+	  "uid": 606445297,
+	  "uname": "全运王者荣耀总决赛",
+	  "face": "https://i1.hdslb.com/bfs/face/de19fea1b43716d14f5a2583551bdb83c1b437c1.jpg",
+	  "rank": "10000",
+	  "platform_user_level": 2,
+	  "mobile_verify": 1,
+	  "identification": 1,
+	  "official_verify": {
+		"type": -1,
+		"desc": "",
+		"role": 0
+	  },
+	  "vip_type": 0,
+	  "gender": -1
+	},
+	"level": {
+	  "uid": 606445297,
+	  "cost": 0,
+	  "rcost": 11427422,
+	  "user_score": "0",
+	  "vip": 0,
+	  "vip_time": "0000-00-00 00:00:00",
+	  "svip": 0,
+	  "svip_time": "0000-00-00 00:00:00",
+	  "update_time": "2021-11-20 13:45:04",
+	  "master_level": {
+		"level": 15,
+		"color": 5805790,
+		"current": [
+		  31000,
+		  109810
+		],
+		"next": [
+		  45000,
+		  154810
+		],
+		"anchor_score": 114274,
+		"upgrade_score": 40536,
+		"master_level_color": 5805790,
+		"sort": ">10000"
+	  },
+	  "user_level": 0,
+	  "color": 9868950,
+	  "anchor_score": 114274
+	},
+	"san": 12
+  }
+}

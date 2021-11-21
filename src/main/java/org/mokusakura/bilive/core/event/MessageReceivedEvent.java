@@ -1,4 +1,6 @@
-package org.mokusakura.bilive.core.model;
+package org.mokusakura.bilive.core.event;
+
+import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
 /**
  * @author MokuSakura

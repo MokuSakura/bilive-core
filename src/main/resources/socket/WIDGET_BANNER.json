@@ -1,0 +1,56 @@
+{
+  "cmd": "WIDGET_BANNER",
+  "data": {
+	"timestamp": 1637289007,
+	"widget_list": {
+	  "58": {
+		"id": 58,
+		"title": "主播任务挂件",
+		"cover": "",
+		"tip_text": "",
+		"tip_text_color": "",
+		"tip_bottom_color": "",
+		"jump_url": "http://bilibili@wwww.com",
+		"url": "",
+		"stay_time": 5,
+		"site": 1,
+		"platform_in": [
+		  "pc_link"
+		],
+		"type": 7,
+		"band_id": 0,
+		"sub_key": "",
+		"sub_data": {
+		  "people_type": 0,
+		  "sub_task_info": [
+			{
+			  "sub_task_id": 170,
+			  "sub_task_type": 5,
+			  "title": "获得电池",
+			  "target_num": 1000,
+			  "current_num": 0,
+			  "reward_type": [
+				1,
+				2
+			  ],
+			  "people_type": 0
+			},
+			{
+			  "sub_task_id": 169,
+			  "sub_task_type": 6,
+			  "title": "开播分钟",
+			  "target_num": 30,
+			  "current_num": 0,
+			  "reward_type": [
+				1,
+				2
+			  ],
+			  "people_type": 0
+			}
+		  ]
+		},
+		"is_add": true
+	  }
+	}
+  }
+}

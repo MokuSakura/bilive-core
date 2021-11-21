@@ -2,7 +2,6 @@ package org.mokusakura.bilive.core.writer;
 
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
-import org.mokusakura.bilive.core.XmlDanmakuWriter;
 
 /**
  * @author MokuSakura

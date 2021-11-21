@@ -5,7 +5,7 @@
     <groupId>org.mokusakura</groupId>
     <packaging>jar</packaging>
     <artifactId>bilive-core</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.3</version>
     <name>core</name>
     <description>Core library of BiLive</description>
 
@@ -86,6 +86,20 @@
                     <skip>true</skip>
                     <encoding>utf-8</encoding>
                 </configuration>
+            </plugin>
+            <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-source-plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
         </plugins>

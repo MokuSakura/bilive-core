@@ -1,19 +1,21 @@
 package org.mokusakura.bilive.core.event;
 
+import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
+
 /**
  * @author MokuSakura
  */
 public class StatusChangedEvent {
-    protected Status status;
+    protected String status;
     protected Long roomId;
     protected Long uid;
-    protected String message;
+    protected GenericBilibiliMessage message;
 
-    public Status getStatus() {
+    public String getStatus() {
         return status;
     }
 
-    public StatusChangedEvent setStatus(Status status) {
+    public StatusChangedEvent setStatus(String status) {
         this.status = status;
         return this;
     }
@@ -36,16 +38,18 @@ public class StatusChangedEvent {
         return this;
     }
 
-    public String getMessage() {
+    public GenericBilibiliMessage getMessage() {
         return message;
     }
 
-    public StatusChangedEvent setMessage(String message) {
+    public StatusChangedEvent setMessage(GenericBilibiliMessage message) {
         this.message = message;
         return this;
     }
 
-    public enum Status {
-        Begin, End, Disconnect
+    public static class Status {
+        public static final String BEGIN = "Begin";
+        public static final String PREPARING = "Preparing";
+        public static final String DISCONNECT = "Disconnect";
     }
 }

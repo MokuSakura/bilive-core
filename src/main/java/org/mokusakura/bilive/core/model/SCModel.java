@@ -17,11 +17,11 @@ public class SCModel extends AbstractDanmaku {
 
     protected Integer keepTime;
 
-    protected SCModel(String json) {
+    public SCModel(String json) {
         var obj = JSONObject.parseObject(json);
         super.messageType = MessageType.SuperChat;
 
-        super.uid = obj.getJSONObject("data").getInteger("uid");
+        super.uid = obj.getJSONObject("data").getLong("uid");
         super.username = obj.getJSONObject("data").getJSONObject("user_info").getString("uname");
         super.timestamp = obj.getJSONObject("data").getLong("start_time");
         this.price = obj.getJSONObject("data").getDouble("price");
