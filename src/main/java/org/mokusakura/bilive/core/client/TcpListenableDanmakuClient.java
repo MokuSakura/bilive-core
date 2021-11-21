@@ -10,12 +10,9 @@ import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
-import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
-import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
+import org.mokusakura.bilive.core.model.*;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
-import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
-import org.mokusakura.bilive.core.model.HelloModel;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -158,11 +155,18 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
                 Arrays.copyOfRange(data, 0, BilibiliWebSocketHeader.HEADER_LENGTH));
         byte[] body = Arrays.copyOfRange(data, BilibiliWebSocketHeader.BODY_OFFSET, data.length);
         List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
-        callMessageReceivedListeners(messages);
+        callListeners(messages);
     }
 
-    protected void callMessageReceivedListeners(List<GenericBilibiliMessage> messages) {
+    protected void callListeners(List<GenericBilibiliMessage> messages) {
         for (GenericBilibiliMessage message : messages) {
+            if (message instanceof LiveBeginModel || message instanceof LiveEndModel) {
+                StatusChangedEvent statusChangedEvent = createStatusChangedEvent(message);
+                for (Consumer<StatusChangedEvent> consumer : this.statusChangedHandlers) {
+                    consumer.accept(statusChangedEvent);
+                }
+                continue;
+            }
             MessageReceivedEvent event = createMessageEvent(message);
             try {
                 for (Consumer<MessageReceivedEvent> consumer : this.messageReceivedListeners) {
@@ -172,6 +176,19 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
                 log.error("{} {}", e.getMessage(), Arrays.toString(e.getStackTrace()));
             }
         }
+    }
+
+    private StatusChangedEvent createStatusChangedEvent(GenericBilibiliMessage message) {
+        StatusChangedEvent event = new StatusChangedEvent()
+                .setMessage(message)
+                .setRoomId(roomInit.getRoomId())
+                .setUid(roomInit.getUid());
+        if (message instanceof LiveEndModel) {
+            event.setStatus(StatusChangedEvent.Status.PREPARING);
+        } else if (message instanceof LiveBeginModel) {
+            event.setStatus(StatusChangedEvent.Status.BEGIN);
+        }
+        return event;
     }
 
     protected MessageReceivedEvent createMessageEvent(GenericBilibiliMessage message) {
@@ -307,7 +324,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
         for (var handler : statusChangedHandlers) {
             StatusChangedEvent event = new StatusChangedEvent()
                     .setMessage(null)
-                    .setStatus(StatusChangedEvent.Status.Disconnect)
+                    .setStatus(StatusChangedEvent.Status.DISCONNECT)
                     .setRoomId(roomInit.getRoomId())
                     .setUid(roomInit.getUid());
             handler.accept(event);
