@@ -203,7 +203,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
                 try {
                     var readBuffer = new byte[1024 * 8];
                     var readSize = inputStream.read(readBuffer);
-                    if (readSize == 0) {
+                    if (readSize == 0 || readSize == -1) {
                         throw new IOException();
                     }
                     // ***************Concat the data with read data**************
