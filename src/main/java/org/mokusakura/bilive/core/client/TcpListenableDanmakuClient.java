@@ -233,10 +233,9 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
 
 
                 } catch (IOException e) {
-                    throw e;
-                } catch (Exception e) {
                     log.error(e.getMessage());
-                    log.error(Arrays.toString(e.getStackTrace()));
+                    log.error("{}", Arrays.toString(e.getStackTrace()));
+                    throw e;
                 }
             }
         } catch (IOException e) {
