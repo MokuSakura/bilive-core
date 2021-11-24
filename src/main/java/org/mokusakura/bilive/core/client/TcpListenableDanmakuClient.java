@@ -100,7 +100,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
 
     @Override
     public boolean isConnected() {
-        return inputStream != null;
+        return !closed;
     }
 
     @Override
@@ -199,12 +199,19 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
         try {
             // All unused data is stored here
             byte[] data = new byte[0];
-            while (socket != null) {
+            boolean exceptionEnd = false;
+            while (true) {
                 try {
+                    lock.lock();
+                    if (!this.isConnected()) {
+                        return;
+                    }
                     var readBuffer = new byte[1024 * 8];
                     var readSize = inputStream.read(readBuffer);
+                    // socket is closed
                     if (readSize == 0 || readSize == -1) {
-                        throw new IOException();
+                        readSize = 0;
+                        exceptionEnd = true;
                     }
                     // ***************Concat the data with read data**************
                     byte[] temp = new byte[readSize + data.length];
@@ -217,12 +224,18 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
                     // Data not enough to be a header.
                     // Continue reading.
                     if (data.length < 16) {
+                        if (exceptionEnd) {
+                            throw new IOException();
+                        }
                         continue;
                     }
 
                     BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(data, true);
                     // Body is not intact. Continue reading until the body is intact.
                     if (data.length < header.getTotalLength()) {
+                        if (exceptionEnd) {
+                            throw new IOException();
+                        }
                         continue;
                     }
                     byte[] dataToProcess = Arrays.copyOfRange(data, 0, (int) header.getTotalLength());
@@ -232,14 +245,12 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
                     // The reset data.
 
 
-                } catch (IOException e) {
-                    log.error(e.getMessage());
-                    log.error("{}", Arrays.toString(e.getStackTrace()));
-                    throw e;
+                } finally {
+                    lock.unlock();
                 }
             }
         } catch (IOException e) {
-            threadPoolExecutor.execute(() -> {
+            threadPoolExecutor.submit(() -> {
                 try {
                     disconnectWithoutEvent();
                     tryReconnect();
@@ -252,7 +263,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
     private boolean connectWithTrueRoomId(Long roomId) throws NoNetworkConnectionException {
         try {
             lock.lock();
-            if (!closed) {
+            if (this.isConnected()) {
                 return false;
             }
 
@@ -289,10 +300,6 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
             } catch (IOException | InterruptedException | ExecutionException e) {
                 log.error(e.getMessage());
             }
-        } catch (NoNetworkConnectionException e) {
-            throw e;
-        } catch (Exception e) {
-            e.printStackTrace();
         } finally {
             lock.unlock();
         }
