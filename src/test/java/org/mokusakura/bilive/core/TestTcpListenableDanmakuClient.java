@@ -147,7 +147,7 @@ class MonitorApp {
 
     private void onStatusChanged(StatusChangedEvent event) {
         switch (event.getStatus()) {
-            case Begin:
+            case StatusChangedEvent.Status.BEGIN:
                 synchronized (this) {
                     if (begin) {
                         return;
@@ -170,10 +170,10 @@ class MonitorApp {
                     }
                 }
                 break;
-            case End:
+            case StatusChangedEvent.Status.PREPARING:
                 onEnd();
                 break;
-            case Disconnect:
+            case StatusChangedEvent.Status.DISCONNECT:
                 onDisconnect();
                 break;
         }
@@ -207,10 +207,10 @@ class MonitorApp {
         } else if (danmaku instanceof GuardBuyModel) {
             GuardBuyModel guardBuyModel = (GuardBuyModel) danmaku;
 
-            log.debug("{} buy {}", guardBuyModel.getUsername(), guardBuyModel.getGuardName());
+            log.debug("{} buy {}", guardBuyModel.getUsername(), guardBuyModel.getGiftName());
             userSentPrice.compute(guardBuyModel.getUsername(), (uid, price) ->
-                    price == null ? guardBuyModel.getGiftPrice() : price + guardBuyModel.getGiftPrice());
-            totalPrice += guardBuyModel.getGiftPrice();
+                    price == null ? guardBuyModel.getPrice() : price + guardBuyModel.getPrice());
+            totalPrice += guardBuyModel.getPrice();
         } else if (danmaku instanceof SCModel) {
             SCModel scModel = (SCModel) danmaku;
 //            scModel.setPrice(scModel.getPrice() * 1000);

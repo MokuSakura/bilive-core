@@ -7,9 +7,12 @@ import com.alibaba.fastjson.JSONObject;
  */
 public class GuardBuyModel extends AbstractDanmaku {
     protected Integer guardLevel;
-    protected String guardName;
+    protected String giftName;
     protected Integer giftId;
-    protected Double giftPrice;
+    protected Double price;
+    protected Integer num;
+    protected Long startTime;
+    protected Long endTime;
 
 
     public GuardBuyModel(String json) {
@@ -19,10 +22,12 @@ public class GuardBuyModel extends AbstractDanmaku {
         super.username = obj.getJSONObject("data").getString("username");
         super.timestamp = obj.getJSONObject("data").getLong("start_time");
         this.guardLevel = obj.getJSONObject("data").getInteger("guard_level");
-        this.guardName = obj.getJSONObject("data").getString("gift_name");
+        this.giftName = obj.getJSONObject("data").getString("gift_name");
         this.giftId = obj.getJSONObject("data").getInteger("gift_id");
-        this.giftPrice = obj.getJSONObject("data").getDouble("price");
-
+        this.price = obj.getJSONObject("data").getDouble("price");
+        this.num = obj.getJSONObject("data").getInteger("num");
+        this.startTime = obj.getJSONObject("data").getLong("start_time");
+        this.endTime = obj.getJSONObject("data").getLong("end_time");
     }
 
     public Integer getGuardLevel() {
@@ -34,12 +39,12 @@ public class GuardBuyModel extends AbstractDanmaku {
         return this;
     }
 
-    public String getGuardName() {
-        return guardName;
+    public String getGiftName() {
+        return giftName;
     }
 
-    public GuardBuyModel setGuardName(String guardName) {
-        this.guardName = guardName;
+    public GuardBuyModel setGiftName(String giftName) {
+        this.giftName = giftName;
         return this;
     }
 
@@ -52,12 +57,39 @@ public class GuardBuyModel extends AbstractDanmaku {
         return this;
     }
 
-    public Double getGiftPrice() {
-        return giftPrice;
+    public Double getPrice() {
+        return price;
     }
 
-    public GuardBuyModel setGiftPrice(Double giftPrice) {
-        this.giftPrice = giftPrice;
+    public GuardBuyModel setPrice(Double price) {
+        this.price = price;
+        return this;
+    }
+
+    public Integer getNum() {
+        return num;
+    }
+
+    public GuardBuyModel setNum(Integer num) {
+        this.num = num;
+        return this;
+    }
+
+    public Long getStartTime() {
+        return startTime;
+    }
+
+    public GuardBuyModel setStartTime(Long startTime) {
+        this.startTime = startTime;
+        return this;
+    }
+
+    public Long getEndTime() {
+        return endTime;
+    }
+
+    public GuardBuyModel setEndTime(Long endTime) {
+        this.endTime = endTime;
         return this;
     }
 }
