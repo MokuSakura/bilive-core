@@ -28,6 +28,7 @@ public class GuardBuyModel extends AbstractDanmaku {
         this.num = obj.getJSONObject("data").getInteger("num");
         this.startTime = obj.getJSONObject("data").getLong("start_time");
         this.endTime = obj.getJSONObject("data").getLong("end_time");
+        super.rawMessage = json;
     }
 
     public Integer getGuardLevel() {

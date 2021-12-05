@@ -32,6 +32,7 @@ public class InteractWord extends AbstractDanmaku {
     public static InteractWord createInteractWord(String json) {
         InteractWord res = JSONObject.parseObject(json).getObject("data", InteractWord.class);
         res.setMessageType(MessageType.InteractWord);
+        res.rawMessage = json;
         return res;
     }
 

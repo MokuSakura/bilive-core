@@ -56,7 +56,9 @@ public class SendGiftModel extends AbstractDanmaku {
         JSONObject jsonObject = JSON.parseObject(jsonStr);
         JSONObject json = jsonObject.getJSONObject("data");
         SendGiftModel res = json.toJavaObject(SendGiftModel.class);
-        res.setUsername(res.getUname()).setMessageType(MessageType.GiftSend).setRawMessage(jsonStr);
+        res.setUsername(res.getUname())
+                .setMessageType(MessageType.GiftSend)
+                .setRawMessage(jsonStr);
         return res;
     }
 

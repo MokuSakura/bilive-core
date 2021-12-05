@@ -69,15 +69,11 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
             }
             String cmd = matcher.group(1);
             cmd = Objects.requireNonNullElse(cmd, "");
-            if (cmd.startsWith("DANMU_MSG:")) {
-                cmd = "DANMU_MSG";
-            }
             Function<String, GenericBilibiliMessage> constructor = cmdConstructorMap.get(cmd);
             if (constructor != null) {
                 message = constructor.apply(json);
             }
             if (message != null) {
-                message.setRawMessage(json);
                 res.add(message);
             }
             return res;

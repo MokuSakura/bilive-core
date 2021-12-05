@@ -34,6 +34,7 @@ public class SCModel extends AbstractDanmaku {
             medalLevel = obj.getJSONObject("data").getJSONObject("medal_info").getInteger("medal_level");
             medalName = obj.getJSONObject("data").getJSONObject("medal_info").getString("medal_name");
         }
+        super.rawMessage = json;
     }
 
     public Double getPrice() {

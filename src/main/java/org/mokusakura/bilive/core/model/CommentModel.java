@@ -30,6 +30,7 @@ public class CommentModel extends AbstractDanmaku {
         this.guardLevel = obj.getJSONArray("info").getInteger(7);
         this.guardName = mapGuardLevelToName(guardLevel);
         var medalArray = obj.getJSONArray("info").getJSONArray(3);
+        super.rawMessage = json;
         if (medalArray != null && medalArray.size() > 0) {
             this.medalLevel = obj.getJSONArray("info").getJSONArray(3).getInteger(0);
             this.medalName = obj.getJSONArray("info").getJSONArray(3).getString(1);
