@@ -53,29 +53,34 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
             }
             switch (danmaku.getMessageType()) {
                 case MessageType.Comment:
-                    if (!"null".equals(this.commentTag)) {
-                        xmlWriter.writeStartElement(this.commentTag);
+                    if ("null".equals(this.commentTag)) {
+                        return;
                     }
+                    xmlWriter.writeStartElement(this.commentTag);
                     break;
                 case MessageType.GiftSend:
-                    if (!"null".equals(this.giftTage)) {
-                        xmlWriter.writeStartElement(this.giftTage);
+                    if ("null".equals(this.giftTage)) {
+                        return;
                     }
+                    xmlWriter.writeStartElement(this.giftTage);
                     break;
                 case MessageType.SuperChat:
-                    if (!"null".equals(this.scTag)) {
-                        xmlWriter.writeStartElement(this.scTag);
+                    if ("null".equals(this.scTag)) {
+                        return;
                     }
+                    xmlWriter.writeStartElement(this.scTag);
                     break;
                 case MessageType.GuardBuy:
-                    if (!"null".equals(this.guardTag)) {
-                        xmlWriter.writeStartElement(this.guardTag);
+                    if ("null".equals(this.guardTag)) {
+                        return;
                     }
+                    xmlWriter.writeStartElement(this.guardTag);
                     break;
                 case MessageType.InteractWord:
-                    if (!"null".equals(this.iwTag)) {
-                        xmlWriter.writeStartElement(this.iwTag);
+                    if ("null".equals(this.iwTag)) {
+                        return;
                     }
+                    xmlWriter.writeStartElement(this.iwTag);
                     break;
                 default:
                     return;
