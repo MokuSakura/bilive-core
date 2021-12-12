@@ -1,93 +1,67 @@
 package org.mokusakura.bilive.core.model;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
+import lombok.*;
+import lombok.experimental.Accessors;
+import org.mokusakura.bilive.core.util.CloneUtils;
+
+import java.io.Serializable;
 
 
 /**
  * @author MokuSakura
  */
-public class CommentModel extends AbstractDanmaku {
-    protected String commentText;
-    protected Boolean admin;
-    protected Boolean vip;
+@Getter
+@Setter
+@ToString
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+public class CommentModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+    public static final long serializationUID = 23462346234354676L;
+    private String commentText;
+    private Boolean admin;
+    private Boolean vip;
+    private Integer guardLevel;
+    private Integer medalLevel;
+    private String medalName;
+    private Long uid;
+    private String username;
+    private Long timestamp;
 
+    public static CommentModel createFromJson(String json) {
+        JSONArray jsonArray = null;
+        try {
+            jsonArray = JSON.parseArray(json);
 
-    protected Integer guardLevel;
-    protected Integer medalLevel;
-    protected String medalName;
-    protected String guardName;
-
-    public CommentModel(String json) {
-        var obj = JSONObject.parseObject(json);
-        super.messageType = MessageType.Comment;
-        super.uid = obj.getJSONArray("info").getJSONArray(2).getLong(0);
-        super.username = obj.getJSONArray("info").getJSONArray(2).getString(1);
-        super.timestamp = obj.getJSONArray("info").getJSONObject(9).getLong("ts");
-
-        this.commentText = obj.getJSONArray("info").getString(1);
-        this.admin = "1".equals(obj.getJSONArray("info").getJSONArray(2).getString(2));
-        this.vip = "1".equals(obj.getJSONArray("info").getJSONArray(2).getString(3));
-        this.guardLevel = obj.getJSONArray("info").getInteger(7);
-        this.guardName = mapGuardLevelToName(guardLevel);
-        var medalArray = obj.getJSONArray("info").getJSONArray(3);
-        super.rawMessage = json;
-        if (medalArray != null && medalArray.size() > 0) {
-            this.medalLevel = obj.getJSONArray("info").getJSONArray(3).getInteger(0);
-            this.medalName = obj.getJSONArray("info").getJSONArray(3).getString(1);
+        } catch (JSONException e) {
+            JSONObject jsonObject = JSON.parseObject(json);
+            jsonArray = jsonObject.getJSONArray("info");
         }
+        CommentModel commentModel = new CommentModel();
+        commentModel.setMessageType(MessageType.COMMENT);
+        commentModel.uid = jsonArray.getJSONArray(2).getLong(0);
+        commentModel.username = jsonArray.getJSONArray(2).getString(1);
+        commentModel.timestamp = jsonArray.getJSONObject(9).getLong("ts");
+        commentModel.commentText = jsonArray.getString(1);
+        commentModel.admin = "1".equals(jsonArray.getJSONArray(2).getString(2));
+        commentModel.vip = "1".equals(jsonArray.getJSONArray(2).getString(3));
+        commentModel.guardLevel = jsonArray.getInteger(7);
+        var medalArray = jsonArray.getJSONArray(3);
+        commentModel.setRawMessage(json);
+        if (medalArray != null && medalArray.size() > 0) {
+            commentModel.medalLevel = jsonArray.getJSONArray(3).getInteger(0);
+            commentModel.medalName = jsonArray.getJSONArray(3).getString(1);
+        }
+        return commentModel;
     }
 
-    public String getCommentText() {
-        return commentText;
-    }
-
-    public CommentModel setCommentText(String commentText) {
-        this.commentText = commentText;
-        return this;
-    }
-
-    public Boolean getAdmin() {
-        return admin;
-    }
-
-    public CommentModel setAdmin(Boolean admin) {
-        this.admin = admin;
-        return this;
-    }
-
-    public Boolean getVip() {
-        return vip;
-    }
-
-    public CommentModel setVip(Boolean vip) {
-        this.vip = vip;
-        return this;
-    }
-
-    public Integer getUserGuardLevel() {
-        return guardLevel;
-    }
-
-    public CommentModel setUserGuardLevel(Integer guardLevel) {
-        this.guardLevel = guardLevel;
-        return this;
-    }
-
-    public Integer getMedalLevel() {
-        return medalLevel;
-    }
-
-    public CommentModel setMedalLevel(Integer medalLevel) {
-        this.medalLevel = medalLevel;
-        return this;
-    }
-
-    public String getMedalName() {
-        return medalName;
-    }
-
-    public CommentModel setMedalName(String medalName) {
-        this.medalName = medalName;
-        return this;
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return CloneUtils.deepClone(this);
     }
 }

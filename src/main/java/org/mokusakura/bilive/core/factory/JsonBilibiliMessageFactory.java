@@ -22,13 +22,13 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
 
     public static JsonBilibiliMessageFactory createDefault() {
         JsonBilibiliMessageFactory res = new JsonBilibiliMessageFactory();
-        res.register("GUARD_BUY", GuardBuyModel::new);
-        res.register("DANMU_MSG", CommentModel::new);
-        res.register("LIVE", LiveBeginModel::new);
-        res.register("PREPARING", LiveEndModel::new);
-        res.register("SUPER_CHAT_MESSAGE", SCModel::new);
-        res.register("SEND_GIFT", SendGiftModel::createSendGiftModel);
-        res.register("INTERACT_WORD", InteractWord::createInteractWord);
+        res.register("GUARD_BUY", GuardBuyModel::createFromJson);
+        res.register("DANMU_MSG", CommentModel::createFromJson);
+        res.register("LIVE", LiveBeginModel::createFromJson);
+        res.register("PREPARING", LiveEndModel::createFromJson);
+        res.register("SUPER_CHAT_MESSAGE", SCModel::createFromJson);
+        res.register("SEND_GIFT", SendGiftModel::createFromJson);
+        res.register("INTERACT_WORD", InteractWord::createFromJson);
         return res;
     }
 
@@ -54,7 +54,8 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
 
     @Override
     public List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame) {
-        if (frame.getWebSocketHeader().getProtocolVersion() != BilibiliWebSocketHeader.ProtocolVersion.PureJson) {
+        if (frame.getBilibiliWebSocketHeader().getProtocolVersion() !=
+                BilibiliWebSocketHeader.ProtocolVersion.PureJson) {
             throw new IllegalArgumentException("Wrong protocol version");
         }
         String json = new String(frame.getWebSocketBody(), StandardCharsets.UTF_8);

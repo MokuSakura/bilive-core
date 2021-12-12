@@ -1,35 +1,34 @@
 package org.mokusakura.bilive.core.model;
 
+import lombok.*;
+import lombok.experimental.Accessors;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
+import org.mokusakura.bilive.core.util.CloneUtils;
+
+import java.io.Serializable;
 
 /**
  * <p>
- * Generic Bilibili Message.<br/>
- * Using {@link BilibiliMessageFactory#create(BilibiliWebSocketFrame)} )} to create a instance.<br/>
+ * Generic Bilibili Message.
+ * Using {@link BilibiliMessageFactory#create(BilibiliWebSocketFrame)} )} to create a instance.
  * </p>
  *
  * @author MokuSakura
  */
-public abstract class GenericBilibiliMessage {
 
-    protected String messageType;
-    protected String rawMessage;
+@ToString
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+public abstract class GenericBilibiliMessage implements Serializable, Cloneable {
+    public static final long serializationUID = -3584268486724L;
+    private String messageType;
+    private String rawMessage;
 
-    public String getMessageType() {
-        return messageType;
-    }
-
-    public GenericBilibiliMessage setMessageType(String messageType) {
-        this.messageType = messageType;
-        return this;
-    }
-
-    public String getRawMessage() {
-        return rawMessage;
-    }
-
-    public GenericBilibiliMessage setRawMessage(String rawMessage) {
-        this.rawMessage = rawMessage;
-        return this;
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return CloneUtils.deepClone(this);
     }
 }

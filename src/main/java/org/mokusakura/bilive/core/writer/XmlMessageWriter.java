@@ -1,9 +1,9 @@
 package org.mokusakura.bilive.core.writer;
 
 import lombok.extern.log4j.Log4j2;
-import org.mokusakura.bilive.core.model.AbstractDanmaku;
+import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 import org.mokusakura.bilive.core.model.MessageType;
-import org.mokusakura.bilive.core.util.PropertiesUtil;
+import org.mokusakura.bilive.core.util.PropertiesUtils;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -23,14 +23,14 @@ import java.util.zip.GZIPOutputStream;
  * @author MokuSakura
  */
 @Log4j2
-public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
+public class XmlMessageWriter extends FileBasedWriter implements MessageWriter {
     private final Lock lock;
     private XMLStreamWriter xmlWriter;
     private Long roomId;
     private Date beginTime;
     private Boolean enableRaw;
     private String commentTag;
-    private String giftTage;
+    private String giftTag;
     private String guardTag;
     private String scTag;
     private String iwTag;
@@ -38,53 +38,39 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
     private String extraMessage;
     private OutputStream outputStream;
     private File file;
+    private Boolean lineSeparate;
 
 
-    public XmlDanmakuWriter() {
+    public XmlMessageWriter() {
         lock = new ReentrantLock();
     }
 
     @Override
-    public void write(AbstractDanmaku danmaku) {
+    public void write(GenericBilibiliMessage danmaku) {
         try {
             lock.lock();
             if (xmlWriter == null) {
                 return;
             }
-            switch (danmaku.getMessageType()) {
-                case MessageType.Comment:
-                    if ("null".equals(this.commentTag)) {
-                        return;
-                    }
-                    xmlWriter.writeStartElement(this.commentTag);
-                    break;
-                case MessageType.GiftSend:
-                    if ("null".equals(this.giftTage)) {
-                        return;
-                    }
-                    xmlWriter.writeStartElement(this.giftTage);
-                    break;
-                case MessageType.SuperChat:
-                    if ("null".equals(this.scTag)) {
-                        return;
-                    }
-                    xmlWriter.writeStartElement(this.scTag);
-                    break;
-                case MessageType.GuardBuy:
-                    if ("null".equals(this.guardTag)) {
-                        return;
-                    }
-                    xmlWriter.writeStartElement(this.guardTag);
-                    break;
-                case MessageType.InteractWord:
-                    if ("null".equals(this.iwTag)) {
-                        return;
-                    }
-                    xmlWriter.writeStartElement(this.iwTag);
-                    break;
-                default:
-                    return;
+            String type = danmaku.getMessageType();
+            String tag;
+            if (MessageType.COMMENT.equals(type)) {
+                tag = commentTag;
+            } else if (MessageType.GIFT_SEND.equals(type)) {
+                tag = giftTag;
+            } else if (MessageType.GUARD_BUY.equals(type)) {
+                tag = guardTag;
+            } else if (MessageType.SUPER_CHAT.equals(type)) {
+                tag = scTag;
+            } else if (MessageType.INTERACT_WORD.equals(type)) {
+                tag = iwTag;
+            } else {
+                return;
             }
+            if (tag == null) {
+                return;
+            }
+            xmlWriter.writeStartElement(tag);
             if (enableRaw) {
                 xmlWriter.writeAttribute("raw", danmaku.getRawMessage());
             }
@@ -110,13 +96,18 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
      *                   <p>
      *                   - path: String, mandatory
      *                   File that will store all danmaku will be created in this path.
-     *                   If the file doesn't exists, new file will be created as well as all directories.
+     *                   If the file doesn't exists,
+     *                   new file will be created as well as all directories.
+     *                   <p>
+     *                   - bufferSize: String, default=8k
+     *                   Buffer size. Should be integer or
+     *                   integer with k,m or b. default unit is b
      *                   <p>
      *                   - lineSeparate: Boolean, default=false
      *                   Whether to separate each line.
      *                   <p>
      *                   - compress: Boolean, default=false
-     *                   If true, when call for {@link Closeable#close()}, file will compact as gzip.
+     *                   If true, file will be compressed as gzip.
      *                   <p>
      *                   - timeFormat: String, default=yyyy/MM/dd HH:mm:ss.SSS
      *                   Time format string to format time.
@@ -128,7 +119,8 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
      *                   If true, raw messaged will be stored in the raw attribute.
      *                   <p>
      *                   - replaceFile: true or false, default=false
-     *                   If true and there is an already existing file, new file will replace the old one.
+     *                   If true and there is an already existing file,
+     *                   new file will replace the old one.
      *                   <p>
      *                   - element.comment: string, default=d
      *                   element name that will store comment.
@@ -153,6 +145,7 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
      * @throws FileAlreadyExistsException if file already exists.
      * @throws IOException                if fail to create file or directories.
      * @throws IllegalArgumentException   if missing argument(s) or wrong argument type.
+     * @see FileBasedWriter#resolveFileProperties(PropertiesUtils)
      */
     @Override
     public boolean enable(Properties properties) throws IOException {
@@ -162,7 +155,6 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
                 return false;
             }
             resolveProperties(properties);
-
             file = new File(path);
             String parentPath = path.substring(0, path.lastIndexOf(File.separator));
             File parentDir = new File(parentPath);
@@ -184,9 +176,9 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
                 throw new IOException("Error creating file " + path);
             }
             log.info("Create file {}", path);
-            outputStream = new FileOutputStream(file);
+            outputStream = new BufferedOutputStream(new FileOutputStream(file), bufferSize);
             if (compress) {
-                outputStream = new GZIPOutputStream(outputStream);
+                outputStream = new GZIPOutputStream(outputStream, true);
             }
             xmlWriter = XMLOutputFactory
                     .newDefaultFactory()
@@ -222,7 +214,13 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
         return true;
     }
 
-    @Override
+    protected boolean writeSeparator() {
+        if (this.lineSeparate) {
+            return doWriteSeparator();
+        }
+        return false;
+    }
+
     protected boolean doWriteSeparator() {
         try {
             xmlWriter.writeCharacters(System.lineSeparator());
@@ -233,7 +231,7 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
     }
 
     protected void resolveProperties(Properties p) {
-        PropertiesUtil properties = new PropertiesUtil(p);
+        PropertiesUtils properties = new PropertiesUtils(p);
         resolveFileProperties(properties);
         roomId = properties.getLongProperty("roomId");
         Object time = properties.get("time");
@@ -245,14 +243,15 @@ public class XmlDanmakuWriter extends FileBasedWriter implements DanmakuWriter {
         } else if (time instanceof Long) {
             beginTime = new Date((Long) time);
         }
-        extraMessage = properties.getStringProperty("extraMsg", null);
+        lineSeparate = properties.getBooleanProperty("lineSeparate", false);
+        extraMessage = properties.getStringPropertyResolveNull("extraMsg", null);
         timeFormat = properties.getStringProperty("timeFormat", "yyyy/MM/dd HH:mm:ss.SSS");
         enableRaw = properties.getBooleanProperty("enableRaw", false);
-        commentTag = properties.getProperty("element.comment", "d");
-        giftTage = properties.getProperty("element.gift", "gift");
-        guardTag = properties.getProperty("element.guard", "guard");
-        scTag = properties.getProperty("element.superChat", "sc");
-        iwTag = properties.getProperty("element.interactWord", "iw");
+        commentTag = properties.getStringPropertyResolveNull("element.comment", "d");
+        giftTag = properties.getStringPropertyResolveNull("element.gift", "gift");
+        guardTag = properties.getStringPropertyResolveNull("element.guard", "guard");
+        scTag = properties.getStringPropertyResolveNull("element.superChat", "sc");
+        iwTag = properties.getStringPropertyResolveNull("element.interactWord", "iw");
     }
 
     @Override

@@ -1,29 +1,40 @@
 package org.mokusakura.bilive.core.model;
 
 import com.alibaba.fastjson.JSON;
+import lombok.*;
+import lombok.experimental.Accessors;
+import org.mokusakura.bilive.core.util.CloneUtils;
 
-import java.util.Objects;
+import java.io.Serializable;
 
 /**
  * @author MokuSakura
  */
-public class LiveEndModel extends GenericBilibiliMessage {
+@Getter
+@Setter
+@ToString
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+public class LiveEndModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+    private static final long serializationUID = -9874265486584L;
+    private Long roomid;
 
-    private Integer roomId;
-
-    public LiveEndModel(String json) {
+    public static LiveEndModel createFromJson(String json) {
         var obj = JSON.parseObject(json);
-        super.messageType = MessageType.LiveEnd;
-        var integerRoomId = obj.getInteger("roomid");
-        this.roomId = Objects.requireNonNullElseGet(integerRoomId, () -> Integer.valueOf(obj.getString("roomid")));
+        LiveEndModel res = new LiveEndModel();
+        res.setMessageType(MessageType.LIVE_END);
+        res.setRoomid(obj.getLongValue("roomid"));
+        if (res.getRoomid() == null) {
+            res.setRoomid(Long.valueOf(obj.getString("roomid")));
+        }
+        return res;
     }
 
-    public Integer getRoomId() {
-        return roomId;
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return CloneUtils.deepClone(this);
     }
 
-    public LiveEndModel setRoomId(Integer roomId) {
-        this.roomId = roomId;
-        return this;
-    }
 }

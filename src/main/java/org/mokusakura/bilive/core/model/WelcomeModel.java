@@ -1,17 +1,27 @@
 package org.mokusakura.bilive.core.model;
 
+import lombok.*;
+import lombok.experimental.Accessors;
+import org.mokusakura.bilive.core.util.CloneUtils;
+
+import java.io.Serializable;
+
 /**
  * @author MokuSakura
  */
-public class WelcomeModel extends GenericBilibiliMessage {
+@Getter
+@Setter
+@ToString
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+public class WelcomeModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+    private static final long serializationUID = -26846535216354653L;
     private Integer uid;
 
-    public Integer getUid() {
-        return uid;
-    }
-
-    public WelcomeModel setUid(Integer uid) {
-        this.uid = uid;
-        return this;
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return CloneUtils.deepClone(this);
     }
 }

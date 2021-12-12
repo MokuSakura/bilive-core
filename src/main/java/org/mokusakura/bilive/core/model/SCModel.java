@@ -1,102 +1,169 @@
 package org.mokusakura.bilive.core.model;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.*;
+import lombok.experimental.Accessors;
+import org.mokusakura.bilive.core.util.CloneUtils;
+
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author MokuSakura
  */
-public class SCModel extends AbstractDanmaku {
-    protected Double price;
-    protected String message;
+@Getter
+@Setter
+@ToString
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+public class SCModel extends GenericBilibiliMessage implements Serializable, Cloneable {
 
 
-    protected Integer guardLevel;
-    protected String guardName;
-    protected Integer medalLevel;
-    protected String medalName;
+    private final static long serialVersionUID = 8275693861288435948L;
+    private final Map<String, Object> additionalProperties = new HashMap<>();
+    private String backgroundBottomColor;
+    private String backgroundColor;
+    private String backgroundColorEnd;
+    private String backgroundColorStart;
+    private String backgroundIcon;
+    private String backgroundImage;
+    private String backgroundPriceColor;
+    private Double colorPoint;
+    private Long dmscore;
+    private Long endTime;
+    private Gift gift;
+    private Long id;
+    private Long isRanked;
+    private String isSendAudit;
+    private MedalInfo medalInfo;
+    private String message;
+    private String messageFontColor;
+    private String messageTrans;
+    private Long price;
+    private Long rate;
+    private Long startTime;
+    private Long time;
+    private String token;
+    private Long transMark;
+    private Long ts;
+    private Long uid;
+    private UserInfo userInfo;
 
-    protected Integer keepTime;
-
-    public SCModel(String json) {
-        var obj = JSONObject.parseObject(json);
-        super.messageType = MessageType.SuperChat;
-
-        super.uid = obj.getJSONObject("data").getLong("uid");
-        super.username = obj.getJSONObject("data").getJSONObject("user_info").getString("uname");
-        super.timestamp = obj.getJSONObject("data").getLong("start_time");
-        this.price = obj.getJSONObject("data").getDouble("price");
-        this.message = obj.getJSONObject("data").getString("message");
-        this.keepTime = obj.getJSONObject("data").getInteger("time");
-        guardLevel = obj.getJSONObject("data").getInteger("guard_level");
-        guardName = mapGuardLevelToName(guardLevel);
-        var medalInfo = obj.getJSONObject("data").getJSONObject("medal_info");
-        if (medalInfo != null) {
-            medalLevel = obj.getJSONObject("data").getJSONObject("medal_info").getInteger("medal_level");
-            medalName = obj.getJSONObject("data").getJSONObject("medal_info").getString("medal_name");
+    public static SCModel createFromJson(String json) {
+        JSONObject jsonObject = JSONObject.parseObject(json);
+        JSONObject dataObject = jsonObject.getJSONObject("data");
+        if (dataObject != null) {
+            jsonObject = dataObject;
         }
-        super.rawMessage = json;
+        SCModel res = jsonObject.toJavaObject(SCModel.class);
+        res.setRawMessage(json);
+        res.setMessageType(MessageType.SUPER_CHAT);
+        return res;
     }
 
-    public Double getPrice() {
-        return price;
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return CloneUtils.deepClone(this);
     }
 
-    public SCModel setPrice(Double price) {
-        this.price = price;
-        return this;
+    public void addAdditionalProperty(String name, Object value) {
+        this.additionalProperties.put(name, value);
     }
 
-    public String getMessage() {
-        return message;
+    @Getter
+    @Setter
+    @ToString
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Accessors(chain = true)
+
+    public static class Gift implements Serializable, Cloneable {
+        private final static long serialVersionUID = 1540792054227797718L;
+        private final Map<String, Object> additionalProperties = new HashMap<>();
+        private Long giftId;
+        private String giftName;
+        private Long num;
+
+        public void addAdditionalProperty(String name, Object value) {
+            this.additionalProperties.put(name, value);
+        }
+
+        @Override
+        public Object clone() throws CloneNotSupportedException {
+            return CloneUtils.deepClone(this);
+        }
     }
 
-    public SCModel setMessage(String message) {
-        this.message = message;
-        return this;
+    @Getter
+    @Setter
+    @ToString
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Accessors(chain = true)
+    public static class MedalInfo implements Serializable, Cloneable {
+        private final static long serialVersionUID = 3204661273937089018L;
+        private final Map<String, Object> additionalProperties = new HashMap<>();
+        private Long anchorRoomid;
+        private String anchorUname;
+        private Long guardLevel;
+        private Long iconId;
+        private Long isLighted;
+        private String medalColor;
+        private Long medalColorBorder;
+        private Long medalColorEnd;
+        private Long medalColorStart;
+        private Long medalLevel;
+        private String medalName;
+        private String special;
+        private Long targetId;
+
+        public void addAdditionalProperty(String name, Object value) {
+            this.additionalProperties.put(name, value);
+        }
+
+        @Override
+        public Object clone() throws CloneNotSupportedException {
+            return CloneUtils.deepClone(this);
+        }
     }
 
-    public Integer getKeepTime() {
-        return keepTime;
+    @Getter
+    @Setter
+    @ToString
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Accessors(chain = true)
+    public static class UserInfo implements Serializable, Cloneable {
+        private final static long serialVersionUID = 5294051665651419042L;
+        private final Map<String, Object> additionalProperties = new HashMap<>();
+        private String face;
+        private String faceFrame;
+        private Long guardLevel;
+        private Long isMainVip;
+        private Long isSvip;
+        private Long isVip;
+        private String levelColor;
+        private Long manager;
+        private String nameColor;
+        private String title;
+        private String uname;
+        private Long userLevel;
+
+        public void addAdditionalProperty(String name, Object value) {
+            this.additionalProperties.put(name, value);
+        }
+
+        @Override
+        public Object clone() throws CloneNotSupportedException {
+            return CloneUtils.deepClone(this);
+        }
     }
 
-    public SCModel setKeepTime(Integer keepTime) {
-        this.keepTime = keepTime;
-        return this;
-    }
-
-    public Integer getGuardLevel() {
-        return guardLevel;
-    }
-
-    public SCModel setGuardLevel(Integer guardLevel) {
-        this.guardLevel = guardLevel;
-        return this;
-    }
-
-    public String getGuardName() {
-        return guardName;
-    }
-
-    public SCModel setGuardName(String guardName) {
-        this.guardName = guardName;
-        return this;
-    }
-
-    public Integer getMedalLevel() {
-        return medalLevel;
-    }
-
-    public SCModel setMedalLevel(Integer medalLevel) {
-        this.medalLevel = medalLevel;
-        return this;
-    }
-
-    public String getMedalName() {
-        return medalName;
-    }
-
-    public SCModel setMedalName(String medalName) {
-        this.medalName = medalName;
-        return this;
-    }
 }
+

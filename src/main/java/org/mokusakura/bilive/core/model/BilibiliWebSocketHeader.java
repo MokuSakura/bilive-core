@@ -1,14 +1,25 @@
 package org.mokusakura.bilive.core.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.ToString;
 import lombok.extern.log4j.Log4j2;
+import org.mokusakura.bilive.core.util.CloneUtils;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 
 /**
  * @author MokuSakura
  */
 @Log4j2
-public class BilibiliWebSocketHeader {
+@Getter
+@ToString
+@Builder
+@AllArgsConstructor
+public class BilibiliWebSocketHeader implements Serializable, Cloneable {
+    private static final long serializationUID = -628468546534265L;
     public static final short HEADER_LENGTH = 16;
     public static final int TOTAL_LENGTH_OFFSET = 0;
     public static final int HEADER_LENGTH_OFFSET = 4;
@@ -26,15 +37,6 @@ public class BilibiliWebSocketHeader {
     private final short protocolVersion;
     private final int actionType;
     private final int sequence;
-
-    protected BilibiliWebSocketHeader(int bodyLength, short headerLength,
-                                      short protocolVersion, int actionType, int sequence) {
-        this.totalLength = bodyLength;
-        this.headerLength = headerLength;
-        this.protocolVersion = protocolVersion;
-        this.actionType = actionType;
-        this.sequence = sequence;
-    }
 
     public static BilibiliWebSocketHeader getHeartBeatHeader() {
         return HEART_BEAT_HEADER;
@@ -56,7 +58,7 @@ public class BilibiliWebSocketHeader {
     /**
      * <p>
      * Since We don't know the meaning of {@link ProtocolVersion} and {@link ActionType} when sending data to the server.
-     * We recommend to use the method only to decode the data came from server, which means {@param fromServer} is always true.
+     * We recommend to use the method only to decode the data came from server, which means {@code fromServer} is always true.
      * </p>
      *
      * @param bytes      Data
@@ -73,49 +75,6 @@ public class BilibiliWebSocketHeader {
         short protocolVersionShort = byteBuffer.getShort(PROTOCOL_VERSION_OFFSET);
         int actionInt = byteBuffer.getInt(ACTION_OFFSET);
         int sequence = byteBuffer.getInt(SEQUENCE_OFFSET);
-//        int protocolVersion;
-//        if (fromServer) {
-//            switch (protocolVersionShort) {
-//                case 0:
-//                    protocolVersion = ProtocolVersion.PureJson;
-//                    break;
-//                case 1:
-//                    protocolVersion = ProtocolVersion.Popularity;
-//                    break;
-//                case 2:
-//                    protocolVersion = ProtocolVersion.CompressedBuffer;
-//                    break;
-//                case 5:
-//                    protocolVersion = ProtocolVersion.CompressedBuffer2;
-//                    log.debug(Arrays.toString(byteBuffer.array()));
-//                    break;
-//                //TODO It seems another protocol version is used by Bilibili now.
-//                default:
-//                    throw new RuntimeException("Unknown Protocol Version" + protocolVersionShort);
-//            }
-//        } else {
-//            protocolVersion = ProtocolVersion.Default;
-//        }
-//        int actionType;
-//        switch (actionInt) {
-//            case 2:
-//                actionType = ActionType.HeartBeat;
-//                break;
-//            case 3:
-//                actionType = ActionType.Popularity;
-//                break;
-//            case 5:
-//                actionType = ActionType.GlobalInfo;
-//                break;
-//            case 7:
-//                actionType = ActionType.Hello;
-//                break;
-//            case 8:
-//                actionType = ActionType.EnterRoom;
-//                break;
-//            default:
-//                throw new RuntimeException("Unknown ActionType");
-//        }
         return new BilibiliWebSocketHeader(totalLength, headerLength, protocolVersionShort, actionInt, sequence);
     }
 
@@ -129,20 +88,9 @@ public class BilibiliWebSocketHeader {
         return new BilibiliWebSocketHeader((int) bodyLength, HEADER_LENGTH, protocolVersion, actionType, 1);
     }
 
-    public short getProtocolVersion() {
-        return protocolVersion;
-    }
-
-    public int getActionType() {
-        return actionType;
-    }
-
-    public long getTotalLength() {
-        return totalLength;
-    }
-
-    public int getHeaderLength() {
-        return headerLength;
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return CloneUtils.deepClone(this);
     }
 
     /**
@@ -169,10 +117,6 @@ public class BilibiliWebSocketHeader {
         public static final int GlobalInfo = 5;
         public static final int Hello = 7;
         public static final int EnterRoom = 8;
-    }
-
-    public long getSequence() {
-        return sequence;
     }
 
     public static class ProtocolVersion {

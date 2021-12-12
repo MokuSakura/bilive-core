@@ -7,17 +7,17 @@ import java.util.Properties;
 /**
  * @author MokuSakura
  */
-public class PropertiesUtil extends Properties {
-    public PropertiesUtil(Properties defaults) {
+public class PropertiesUtils extends Properties {
+    public PropertiesUtils(Properties defaults) {
         for (Map.Entry<Object, Object> entry : defaults.entrySet()) {
             super.put(entry.getKey(), entry.getValue());
         }
     }
 
-    public PropertiesUtil() {
+    public PropertiesUtils() {
     }
 
-    public PropertiesUtil(int initialCapacity) {
+    public PropertiesUtils(int initialCapacity) {
         super(initialCapacity);
     }
 
@@ -30,6 +30,21 @@ public class PropertiesUtil extends Properties {
     public String getStringProperty(String key, String defaultValue) {
         String str = super.getProperty(key);
         return str == null ? defaultValue : str;
+    }
+
+    public String getStringPropertyResolveNull(String key) {
+        return getStringPropertyResolveNull(key, null);
+    }
+
+    public String getStringPropertyResolveNull(String key, String defaultValue) {
+        String str = super.getProperty(key);
+        if (str == null) {
+            return defaultValue;
+        }
+        if ("null".equalsIgnoreCase(str)) {
+            return null;
+        }
+        return str;
     }
 
 

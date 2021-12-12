@@ -5,20 +5,20 @@ package org.mokusakura.bilive.core.model;
  */
 public class MessageType {
     // 彈幕
-    public static final String Comment = "Comment";
+    public static final String COMMENT = "Comment";
     // 禮物
-    public static final String GiftSend = "GiftSend";
+    public static final String GIFT_SEND = "GiftSend";
     // 直播開始
-    public static final String LiveStart = "LiveStart";
+    public static final String LIVE_START = "LiveStart";
     // 直播結束
-    public static final String LiveEnd = "LiveEnd";
+    public static final String LIVE_END = "LiveEnd";
     // 其他
-    public static final String Unknown = "Unknown";
+    public static final String UNKNOWN = "Unknown";
     // 购买船票（上船）
-    public static final String GuardBuy = "GuardBuy";
+    public static final String GUARD_BUY = "GuardBuy";
     // SuperChat
-    public static final String SuperChat = "SuperChat";
+    public static final String SUPER_CHAT = "SuperChat";
     // 房间信息更新
-    public static final String RoomChange = "RoomChange";
-    public static final String InteractWord = "InteractWord";
+    public static final String ROOM_CHANGE = "RoomChange";
+    public static final String INTERACT_WORD = "InteractWord";
 }

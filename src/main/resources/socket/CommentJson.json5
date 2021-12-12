@@ -13,9 +13,12 @@
 	5,
 	"#1453BAFF,#4C2263A2,#3353BAFF"
   ],
+  // Comment text
   "（￣▽￣）",
   [
+	// uid
 	415565,
+	// username
 	"鈴羽カルペ・ディエム",
 	1,
 	0,
@@ -24,10 +27,15 @@
 	1,
 	"#00D1F1"
   ],
+  //medal information
   [
+	//medal level
 	27,
+	//medal name
 	"水溅跃",
+	//username of liver whom the medal is used for
 	"Liyuu_",
+	// room id of liver whom the medal is used for
 	5265,
 	398668,
 	"",

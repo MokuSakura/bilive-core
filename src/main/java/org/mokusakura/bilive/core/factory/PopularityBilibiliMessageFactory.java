@@ -15,7 +15,8 @@ import java.util.List;
 public class PopularityBilibiliMessageFactory implements BilibiliMessageFactory {
     @Override
     public List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame) {
-        log.debug("{}, {}", frame.getWebSocketHeader().getActionType(), Arrays.toString(frame.getWebSocketBody()));
+        log.debug("{}, {}", frame.getBilibiliWebSocketHeader().getActionType(),
+                  Arrays.toString(frame.getWebSocketBody()));
         return new ArrayList<>();
     }
 }

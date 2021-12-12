@@ -42,7 +42,7 @@ public class DefaultBilibiliMessageFactory implements BilibiliMessageFactory {
 
     @Override
     public List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame) {
-        BilibiliMessageFactory realFactory = subFactoryMap.get(frame.getWebSocketHeader().getProtocolVersion());
+        BilibiliMessageFactory realFactory = subFactoryMap.get(frame.getBilibiliWebSocketHeader().getProtocolVersion());
         return realFactory == null ? new LinkedList<>() : realFactory.create(frame);
     }
 }

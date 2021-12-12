@@ -1,30 +1,54 @@
 package org.mokusakura.bilive.core.model;
 
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import lombok.*;
+import lombok.experimental.Accessors;
+import org.mokusakura.bilive.core.util.CloneUtils;
 
-import java.util.Objects;
+import java.io.Serializable;
 
 /**
  * @author MokuSakura
+ * {
+ * "cmd": "LIVE",
+ * "live_key": "183098067901036888",
+ * "voice_background": "",
+ * "sub_session_key": "183098067901036888sub_time:1637288805",
+ * "live_platform": "pc_link",
+ * "live_model": 0,
+ * "roomid": 5060952
+ * }
  */
-public class LiveBeginModel extends GenericBilibiliMessage {
+@Getter
+@Setter
+@ToString
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Accessors(chain = true)
+public class LiveBeginModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+    private static final long serializationUID = 56426857468L;
+    private Long roomid;
+    private String liveKey;
+    private String voiceBackground;
+    private String subSessionKey;
+    private String livePlatform;
+    private String liveModel;
 
+    public static LiveBeginModel createFromJson(String json) {
+        JSONObject jsonObject = JSONObject.parseObject(json);
 
-    protected Integer roomId;
-
-    public LiveBeginModel(String json) {
-        var obj = JSON.parseObject(json);
-        super.messageType = MessageType.LiveStart;
-        var integerRoomId = obj.getInteger("roomid");
-        this.roomId = Objects.requireNonNullElseGet(integerRoomId, () -> Integer.valueOf(obj.getString("roomid")));
+        LiveBeginModel res = jsonObject.toJavaObject(LiveBeginModel.class);
+        res.setRawMessage(json)
+                .setMessageType(MessageType.LIVE_START);
+        if (res.getRoomid() == null) {
+            res.setRoomid(Long.valueOf(jsonObject.getString("roomid")));
+        }
+        return res;
     }
 
-    public Integer getRoomId() {
-        return roomId;
-    }
-
-    public LiveBeginModel setRoomId(Integer roomId) {
-        this.roomId = roomId;
-        return this;
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return CloneUtils.deepClone(this);
     }
 }
