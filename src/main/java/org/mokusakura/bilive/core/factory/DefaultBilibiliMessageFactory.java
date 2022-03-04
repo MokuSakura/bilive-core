@@ -15,8 +15,6 @@ import java.util.Map;
 public class DefaultBilibiliMessageFactory implements BilibiliMessageFactory {
     private final Map<Short, BilibiliMessageFactory> subFactoryMap = new HashMap<>();
 
-    private DefaultBilibiliMessageFactory() {}
-
     public static DefaultBilibiliMessageFactory createDefault() {
         DefaultBilibiliMessageFactory res = new DefaultBilibiliMessageFactory();
 

@@ -15,9 +15,9 @@ import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.Socket;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
@@ -33,7 +33,7 @@ import java.util.function.Consumer;
  * @author MokuSakura
  */
 @Log4j2
-public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
+public class TcpDanmakuClient implements DanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
     private final BilibiliLiveApiClient apiClient;
@@ -46,14 +46,12 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
     private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
     private boolean closed;
-    private Socket socket;
+    private SocketChannel socketChannel;
     private RoomInit roomInit;
     private DanmakuServerInfo danmakuServerInfo;
-    private InputStream inputStream;
-    private OutputStream outputStream;
 
 
-    public TcpListenableDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
+    public TcpDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
         this.apiClient = apiClient;
         timer = new ScheduledThreadPoolExecutor(10);
         messageReceivedListeners = new LinkedHashSet<>();
@@ -130,9 +128,8 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
             var size = payload.length + BilibiliWebSocketHeader.HEADER_LENGTH;
             BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(size, ProtocolVersion.ClientSend,
                                                                                  actionType);
-            outputStream.write(header.array());
-            outputStream.write(payload);
-            outputStream.flush();
+            socketChannel.write(ByteBuffer.wrap(header.array()));
+            socketChannel.write(ByteBuffer.wrap(payload));
             return true;
         });
 
@@ -140,20 +137,15 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
 
     /**
      * <p>
-     * This is a recursion method.
-     * This method will solve all the data. However, to handle successfully, data must be an intact package.
-     * That means first 16 bytes can be decoded as a header, and the total length of data is equal to
-     * the unsigned int value of the first 4 bytes of the data.
-     * If ProtocolVersion is {@link ProtocolVersion#CompressedBuffer},
-     * After decompress data, this method must be called with decompressed body data.
+     * This method will use {@code this.bilibiliMessageFactory}
+     * to create {@link GenericBilibiliMessage} and call listeners.
+     *
      * </p>
      *
-     * @param data- Data to handle
+     * @param header the socket header
+     * @param body   the socket body
      */
-    protected void handleData(byte[] data) {
-        BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(
-                Arrays.copyOfRange(data, 0, BilibiliWebSocketHeader.HEADER_LENGTH));
-        byte[] body = Arrays.copyOfRange(data, BilibiliWebSocketHeader.BODY_OFFSET, data.length);
+    protected void handleData(BilibiliWebSocketHeader header, ByteBuffer body) {
         List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
         callListeners(messages);
     }
@@ -198,50 +190,42 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
     protected void readThread() {
         try {
             // All unused data is stored here
-            byte[] data = new byte[0];
-            boolean exceptionEnd = false;
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
             while (true) {
                 try {
                     lock.lock();
                     if (!this.isConnected()) {
                         return;
                     }
-                    var readBuffer = new byte[1024 * 8];
-                    var readSize = inputStream.read(readBuffer);
+                    int readSize = socketChannel.read(buffer);
                     // socket is closed
-                    if (readSize == 0 || readSize == -1) {
-                        readSize = 0;
-                        exceptionEnd = true;
+                    if (readSize == -1) {
+                        throw new IOException();
                     }
-                    // ***************Concat the data with read data**************
-                    byte[] temp = new byte[readSize + data.length];
-                    System.arraycopy(data, 0, temp, 0, data.length);
-                    if (temp.length - data.length >= 0)
-                        System.arraycopy(readBuffer, 0, temp, data.length, temp.length - data.length);
-                    data = temp;
-                    // ****************************Finish concat*******************************
-
-                    // Data not enough to be a header.
-                    // Continue reading.
-                    if (data.length < 16) {
-                        if (exceptionEnd) {
-                            throw new IOException();
-                        }
+                    buffer.flip();
+                    // Not enough to be a complete header
+                    if (buffer.remaining() < BilibiliWebSocketHeader.HEADER_LENGTH) {
                         continue;
                     }
 
-                    BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(data, true);
-                    // Body is not intact. Continue reading until the body is intact.
-                    if (data.length < header.getTotalLength()) {
-                        if (exceptionEnd) {
-                            throw new IOException();
+                    int totalLength = buffer.getInt(BilibiliWebSocketHeader.TOTAL_LENGTH_OFFSET);
+                    // Not enough to be a complete package
+                    if (buffer.remaining() < totalLength) {
+                        // Buffer capacity is not enough, so we allocate a new one with doubled capacity
+                        if (buffer.limit() == buffer.capacity()) {
+                            buffer = ByteBuffer.allocate(buffer.capacity() * 2)
+                                    .put(buffer);
                         }
                         continue;
+
                     }
-                    byte[] dataToProcess = Arrays.copyOfRange(data, 0, (int) header.getTotalLength());
-                    data = Arrays.copyOfRange(data, (int) header.getTotalLength(), data.length);
-                    // Although we don't whether the type of the body, but we can make sure an intact header-body is correctly extracted.
-                    handleData(dataToProcess);
+                    BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(buffer, true);
+                    byte[] body = new byte[header.getTotalLength() - header.getHeaderLength()];
+                    buffer.get(body);
+                    // Although we don't know whether the type of the body,
+                    // but we can make sure an intact header-body is correctly extracted.
+                    handleData(header, ByteBuffer.wrap(body));
+                    buffer.compact();
                     // The reset data.
 
 
@@ -279,9 +263,8 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
             var port = hostListItem.getPort();
             try {
                 // Connection is setup here
-                socket = new Socket(host, port);
-                inputStream = socket.getInputStream();
-                outputStream = socket.getOutputStream();
+                socketChannel = SocketChannel.open();
+                socketChannel.connect(new InetSocketAddress(host, port));
                 sendHelloAsync().get();
                 sendHeartBeatAsync().get();
                 // Start read Thread
@@ -290,7 +273,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
                     try {
                         this.sendHeartBeatAsync().get(10, TimeUnit.SECONDS);
                     } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                        e.printStackTrace();
+                        log.error(Arrays.toString(e.getStackTrace()));
                     }
                 }, 10, 30, TimeUnit.SECONDS);
                 closed = false;
@@ -310,10 +293,10 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
 
         int tryTimes = 0;
         while (tryTimes++ < TRY_TIMES) {
-            log.info("Try reconnect for the {} time to room {} short id {}",
-                     tryTimes == 1 ? "1st" : tryTimes == 2 ? "2nd" : tryTimes == 3 ? "3rd" : tryTimes + "th",
+            log.info("Try reconnect to room {} short id {}. Try times: {}",
                      roomInit.getRoomId(),
-                     roomInit.getShortId());
+                     roomInit.getShortId(),
+                     tryTimes);
             try {
                 if (connectWithTrueRoomId(roomInit.getRoomId())) {
                     return;
@@ -346,15 +329,10 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
             closed = true;
             log.info("Disconnect from {}:{} Room id {}, short id {}", hostListItem.getHost(), hostListItem.getPort(),
                      roomInit.getRoomId(), roomInit.getShortId());
-            if (socket != null) {
-                socket.close();
+            if (socketChannel != null) {
+                socketChannel.close();
             }
-            if (inputStream != null) {
-                inputStream.close();
-            }
-            if (outputStream != null) {
-                outputStream.close();
-            }
+
 
         } catch (IOException e) {
             log.error("Error closing DanmakuClient");
@@ -362,9 +340,7 @@ public class TcpListenableDanmakuClient implements ListenableDanmakuClient {
             log.error(Arrays.toString(e.getStackTrace()));
             throw e;
         } finally {
-            socket = null;
-            inputStream = null;
-            outputStream = null;
+            socketChannel = null;
             heartBeatTask.cancel(true);
             lock.unlock();
         }

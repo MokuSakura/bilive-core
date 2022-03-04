@@ -7,6 +7,7 @@ import lombok.ToString;
 import org.mokusakura.bilive.core.util.CloneUtils;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 
 /**
  * @author MokuSakura
@@ -15,11 +16,10 @@ import java.io.Serializable;
 @ToString
 @Builder
 @AllArgsConstructor
-
 public class BilibiliWebSocketFrame implements Serializable, Cloneable {
     private static final long serializationUID = -52465426546542L;
     private final BilibiliWebSocketHeader bilibiliWebSocketHeader;
-    private final byte[] webSocketBody;
+    private final ByteBuffer webSocketBody;
 
     @Override
     protected Object clone() throws CloneNotSupportedException {

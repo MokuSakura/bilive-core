@@ -18,7 +18,6 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
     private static final Pattern CMD_PATTERN = Pattern.compile(
             "(?=[^\\\\])\"cmd(?=[^\\\\])\":.*?(?=[^\\\\])\"(.*?)(?=[^\\\\])\"");
 
-    private JsonBilibiliMessageFactory() {}
 
     public static JsonBilibiliMessageFactory createDefault() {
         JsonBilibiliMessageFactory res = new JsonBilibiliMessageFactory();
@@ -58,7 +57,7 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
                 BilibiliWebSocketHeader.ProtocolVersion.PureJson) {
             throw new IllegalArgumentException("Wrong protocol version");
         }
-        String json = new String(frame.getWebSocketBody(), StandardCharsets.UTF_8);
+        String json = new String(frame.getWebSocketBody().array(), StandardCharsets.UTF_8);
         List<GenericBilibiliMessage> res = new ArrayList<>();
         GenericBilibiliMessage message = null;
         try {

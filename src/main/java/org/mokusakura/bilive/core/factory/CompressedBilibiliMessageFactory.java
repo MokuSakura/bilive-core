@@ -6,10 +6,12 @@ import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.zip.Inflater;
 
 /**
@@ -25,30 +27,23 @@ public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory 
 
     @Override
     public List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame) {
-        byte[] decompressedData = decompressed(frame.getWebSocketBody());
+        ByteBuffer decompressedData = decompressed(frame.getWebSocketBody());
         if (decompressedData == null) {
             return new ArrayList<>();
         }
         List<BilibiliWebSocketFrame> frames = new LinkedList<>();
-        int offset = 0;
-        while (offset != decompressedData.length) {
-            byte[] headerSlice = Arrays.copyOfRange(decompressedData, offset,
-                                                    offset + BilibiliWebSocketHeader.HEADER_LENGTH);
-            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(headerSlice);
-            byte[] body = Arrays.copyOfRange(decompressedData,
-                                             offset + BilibiliWebSocketHeader.BODY_OFFSET,
-                                             (int) (offset + header.getTotalLength()));
-            frames.add(new BilibiliWebSocketFrame(header, body));
-            offset += header.getTotalLength();
+        while (decompressedData.hasRemaining()) {
+            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(decompressedData, true);
+            byte[] body = new byte[header.getTotalLength() - header.getHeaderLength()];
+            decompressedData.get(body);
+            frames.add(new BilibiliWebSocketFrame(header, ByteBuffer.wrap(body)));
         }
-        List<GenericBilibiliMessage> res = new LinkedList<>();
-        for (BilibiliWebSocketFrame frame1 : frames) {
-            res.addAll(defaultBilibiliMessageFactory.create(frame1));
-        }
-        return res;
+        return frames.stream()
+                .flatMap(webSocketFrame -> defaultBilibiliMessageFactory.create(webSocketFrame).stream())
+                .collect(Collectors.toList());
     }
 
-    protected byte[] decompressed(byte[] originalData) {
+    protected ByteBuffer decompressed(ByteBuffer originalData) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             Inflater inflater = new Inflater();
@@ -64,6 +59,6 @@ public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory 
             log.error(e.getMessage());
             return null;
         }
-        return baos.toByteArray();
+        return baos.toByteArray().length == 0 ? null : ByteBuffer.wrap(baos.toByteArray());
     }
 }

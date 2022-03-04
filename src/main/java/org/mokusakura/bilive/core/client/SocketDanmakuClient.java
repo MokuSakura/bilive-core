@@ -30,7 +30,7 @@ import java.util.zip.Inflater;
  * </p>
  */
 @Log4j2
-public class SocketListenableDanmakuClient extends WebSocketClient implements ListenableDanmakuClient {
+public class SocketDanmakuClient extends WebSocketClient implements DanmakuClient {
     public static final int HEADER_SIZE = 16;
     private final Map<Short, BiConsumer<BilibiliWebSocketHeader, ByteBuffer>> messageConverters;
     private final Set<Consumer<MessageReceivedEvent>> messageReceivedHandlers;
@@ -42,7 +42,7 @@ public class SocketListenableDanmakuClient extends WebSocketClient implements Li
     private final ScheduledThreadPoolExecutor timer;
 
 
-    public SocketListenableDanmakuClient(URI uri, RoomInit roomInit, RoomInfo roomInfo) {
+    public SocketDanmakuClient(URI uri, RoomInit roomInit, RoomInfo roomInfo) {
         super(uri);
         this.uri = uri;
         this.roomInit = roomInit;

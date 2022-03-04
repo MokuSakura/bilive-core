@@ -70,13 +70,31 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
             throw new IllegalArgumentException("Bytes length less than 16");
         }
         ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, HEADER_LENGTH);
-        int totalLength = byteBuffer.getInt(TOTAL_LENGTH_OFFSET);
-        short headerLength = byteBuffer.getShort(HEADER_LENGTH_OFFSET);
-        short protocolVersionShort = byteBuffer.getShort(PROTOCOL_VERSION_OFFSET);
-        int actionInt = byteBuffer.getInt(ACTION_OFFSET);
-        int sequence = byteBuffer.getInt(SEQUENCE_OFFSET);
+        return newInstance(byteBuffer);
+    }
+
+    /**
+     * <p>
+     * This method will not check the length of {@code byteBuffer} and
+     * will not change the position of {@code byteBuffer}.
+     * </p>
+     *
+     * @param byteBuffer Data
+     * @return Decoded Header
+     */
+    public static BilibiliWebSocketHeader newInstance(ByteBuffer byteBuffer) {
+        return newInstance(byteBuffer, false);
+    }
+
+    public static BilibiliWebSocketHeader newInstance(ByteBuffer byteBuffer, boolean consume) {
+        int totalLength = consume ? byteBuffer.getInt() : byteBuffer.getInt(TOTAL_LENGTH_OFFSET);
+        short headerLength = consume ? byteBuffer.getShort() : byteBuffer.getShort(HEADER_LENGTH_OFFSET);
+        short protocolVersionShort = consume ? byteBuffer.getShort() : byteBuffer.getShort(PROTOCOL_VERSION_OFFSET);
+        int actionInt = consume ? byteBuffer.getInt() : byteBuffer.getInt(ACTION_OFFSET);
+        int sequence = consume ? byteBuffer.getInt() : byteBuffer.getInt(SEQUENCE_OFFSET);
         return new BilibiliWebSocketHeader(totalLength, headerLength, protocolVersionShort, actionInt, sequence);
     }
+
 
     public static BilibiliWebSocketHeader newInstance(long bodyLength, short protocolVersion,
                                                       int actionType) {
