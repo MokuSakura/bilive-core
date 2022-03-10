@@ -6,8 +6,8 @@ import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.client.DanmakuClient;
 import org.mokusakura.bilive.core.client.TcpDanmakuClient;
-import org.mokusakura.bilive.core.protocol.PopularityProtocolResolver;
-import org.mokusakura.bilive.core.protocol.ProtocolVersionDispatcher;
+import org.mokusakura.bilive.core.factory.DefaultBilibiliMessageFactory;
+import org.mokusakura.bilive.core.factory.PopularityBilibiliMessageFactory;
 
 import java.net.http.HttpClient;
 
@@ -18,15 +18,15 @@ import java.net.http.HttpClient;
 public class TestFactory {
     private final DanmakuClient danmakuClient;
     private final BilibiliLiveApiClient bilibiliLiveApiClient;
-    private final ProtocolVersionDispatcher bilibiliMessageFactory;
+    private final DefaultBilibiliMessageFactory bilibiliMessageFactory;
     private final HttpClient httpClient;
 
     public TestFactory() {
         httpClient = HttpClient.newHttpClient();
         bilibiliLiveApiClient = new HttpLiveApiClient(httpClient);
-        bilibiliMessageFactory = ProtocolVersionDispatcher.createDefault();
-        PopularityProtocolResolver popularityProtocolResolver = new PopularityProtocolResolver();
-        bilibiliMessageFactory.register((short) 1, popularityProtocolResolver);
+        bilibiliMessageFactory = DefaultBilibiliMessageFactory.createDefault();
+        PopularityBilibiliMessageFactory popularityBilibiliMessageFactory = new PopularityBilibiliMessageFactory();
+        bilibiliMessageFactory.register((short) 1, popularityBilibiliMessageFactory);
         danmakuClient = new TcpDanmakuClient(bilibiliLiveApiClient, bilibiliMessageFactory);
         danmakuClient.addMessageReceivedListener(message -> {
             log.info(message.getMessage().getRawMessage());

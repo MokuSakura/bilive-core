@@ -9,10 +9,10 @@ import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
+import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
 import org.mokusakura.bilive.core.model.*;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
-import org.mokusakura.bilive.core.protocol.BilibiliLiveMessageProtocolResolver;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -40,7 +40,7 @@ public class TcpDanmakuClient implements DanmakuClient {
     private final Collection<Consumer<MessageReceivedEvent>> messageReceivedListeners;
     private final Collection<Consumer<StatusChangedEvent>> statusChangedHandlers;
     private final ThreadPoolExecutor threadPoolExecutor;
-    private final BilibiliLiveMessageProtocolResolver bilibiliLiveMessageProtocolResolver;
+    private final BilibiliMessageFactory bilibiliMessageFactory;
     //    private final Map<Short, BiConsumer<BilibiliWebSocketHeader, ByteBuffer>> messageConverters;
     private final Lock lock;
     private ScheduledFuture<?> heartBeatTask;
@@ -51,8 +51,7 @@ public class TcpDanmakuClient implements DanmakuClient {
     private DanmakuServerInfo danmakuServerInfo;
 
 
-    public TcpDanmakuClient(BilibiliLiveApiClient apiClient,
-                            BilibiliLiveMessageProtocolResolver bilibiliLiveMessageProtocolResolver) {
+    public TcpDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
         this.apiClient = apiClient;
         timer = new ScheduledThreadPoolExecutor(10);
         messageReceivedListeners = new LinkedHashSet<>();
@@ -61,7 +60,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         lock = new ReentrantLock();
         closed = true;
 
-        this.bilibiliLiveMessageProtocolResolver = bilibiliLiveMessageProtocolResolver;
+        this.bilibiliMessageFactory = bilibiliMessageFactory;
     }
 
 
@@ -147,8 +146,7 @@ public class TcpDanmakuClient implements DanmakuClient {
      * @param body   the socket body
      */
     protected void handleData(BilibiliWebSocketHeader header, ByteBuffer body) {
-        List<GenericBilibiliMessage> messages = bilibiliLiveMessageProtocolResolver.create(
-                new BilibiliWebSocketFrame(header, body));
+        List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
         callListeners(messages);
     }
 

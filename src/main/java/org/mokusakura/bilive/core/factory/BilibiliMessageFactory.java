@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core.protocol;
+package org.mokusakura.bilive.core.factory;
 
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
@@ -8,6 +8,6 @@ import java.util.List;
 /**
  * @author MokuSakura
  */
-public interface BilibiliLiveMessageProtocolResolver {
+public interface BilibiliMessageFactory {
     List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame);
 }
