@@ -23,6 +23,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 
 /**
+ * <p>
+ * This class is used to connect to multiple danmaku servers.
+ * <p>
+ * Unlike {@link TcpDanmakuClient},
+ * this class is able to connect to multiple danmaku servers with only a few threads.
+ * It usually shows higher performance when connecting to multiple danmaku servers.
+ * Since multiple threads will be created to handle one connection in {@link TcpDanmakuClient} and thus cost more CPU time,
+ * this class will use only a few threads to handle multiple connections.
+ * <p>
+ * Though this class usually only use one thread, we still don't promise messages' order.
+ * <p>
+ * In this class, you can use {@link #connect(long)} to connect to a danmaku server,
+ * or use {@link #disconnect(long)} to disconnect from a danmaku server.
+ *
  * @author MokuSakura
  */
 @Log4j2
@@ -38,6 +52,10 @@ public class MultiConnectionDanmakuClient extends AbstractDanmakuClient {
         } catch (IOException e) {
             log.error("{}, {}", e.getMessage(), Arrays.toString(e.getStackTrace()));
         }
+    }
+
+    public boolean disconnect(long roomId) {
+        return false;
     }
 
     @Override

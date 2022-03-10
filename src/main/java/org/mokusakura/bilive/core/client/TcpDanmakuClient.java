@@ -29,6 +29,24 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * <p>
+ * This class provides a tcp connection to bilibili live danmaku server.
+ * <p>
+ * This class is thread-safe, but if any member field like {@link BilibiliLiveApiClient}
+ * or {@link BilibiliMessageFactory} is not thread-safe, it will cause unexpected behavior.
+ * <p>
+ * This class will use a new thread which is not a daemon thread to connect to the server.
+ * And {@link #sendMessageAsync(long, BilibiliWebSocketFrame)}  will use a thread in ThreadPoolExecutor to send message.
+ * Consider using{@link MultiConnectionDanmakuClient} if you want to connect to multiple danmaku servers.
+ * <p>
+ * In this implementation, {@link #sendMessageAsync(long, BilibiliWebSocketFrame)}
+ * will ignore room id if the instance is connected to a room.
+ * If not, message will not be sent.
+ * <p>
+ * This class ensures all message will be received by listeners.
+ * <p>
+ * This class don't promise the the message's order.
+ *
  * @author MokuSakura
  */
 @Log4j2
