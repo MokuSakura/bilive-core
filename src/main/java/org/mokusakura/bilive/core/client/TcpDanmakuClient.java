@@ -22,27 +22,23 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
 
 /**
  * @author MokuSakura
  */
 @Log4j2
-public class TcpDanmakuClient implements DanmakuClient {
+public class TcpDanmakuClient extends AbstractDanmakuClient {
     public static final int TRY_TIMES = 3;
     private final ScheduledExecutorService timer;
-    private final BilibiliLiveApiClient apiClient;
-    private final Collection<Consumer<MessageReceivedEvent>> messageReceivedListeners;
-    private final Collection<Consumer<StatusChangedEvent>> statusChangedHandlers;
+
+
     private final ThreadPoolExecutor threadPoolExecutor;
     private final BilibiliMessageFactory bilibiliMessageFactory;
-    //    private final Map<Short, BiConsumer<BilibiliWebSocketHeader, ByteBuffer>> messageConverters;
     private final Lock lock;
     private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
@@ -50,6 +46,7 @@ public class TcpDanmakuClient implements DanmakuClient {
     private SocketChannel socketChannel;
     private RoomInit roomInit;
     private DanmakuServerInfo danmakuServerInfo;
+    private final BilibiliLiveApiClient apiClient;
 
 
     public TcpDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
@@ -57,7 +54,7 @@ public class TcpDanmakuClient implements DanmakuClient {
         timer = new ScheduledThreadPoolExecutor(10);
         messageReceivedListeners = new LinkedHashSet<>();
         statusChangedHandlers = new LinkedHashSet<>();
-        threadPoolExecutor = new ThreadPoolExecutor(50, 50, 1000, TimeUnit.SECONDS, new ArrayBlockingQueue<>(50));
+        threadPoolExecutor = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
         lock = new ReentrantLock();
         closed = true;
 
@@ -66,181 +63,46 @@ public class TcpDanmakuClient implements DanmakuClient {
 
 
     @Override
-    public void addMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
-        messageReceivedListeners.add(consumer);
-    }
-
-    @Override
-    public void addStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
-        statusChangedHandlers.add(consumer);
-    }
-
-    @Override
-    public boolean removeMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
-        return this.messageReceivedListeners.remove(consumer);
-    }
-
-    @Override
-    public boolean removeStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
-        return this.statusChangedHandlers.remove(consumer);
-    }
-
-    @Override
-    public void connect(long roomId) throws NoNetworkConnectionException, NoRoomFoundException {
-        this.roomInit = apiClient.getRoomInit(roomId).getData();
-        int tryTimes = 0;
-        while (tryTimes++ < TRY_TIMES) {
-            if (connectWithTrueRoomId(roomInit.getRoomId())) {
-                return;
-            }
-        }
-        throw new NoNetworkConnectionException();
-    }
-
-    @Override
-    public boolean isConnected() {
+    public boolean isOpen() {
         return !closed;
     }
 
     @Override
-    public void disconnect() throws IOException {
+    public void close() throws IOException {
         disconnectWithoutEvent();
     }
 
     @Override
-    public void close() throws IOException {
-        disconnect();
-    }
-
-    protected Future<Boolean> sendHelloAsync() {
-        HelloModel helloModel = HelloModel.newDefault(roomInit.getRoomId(), danmakuServerInfo.getToken());
-        return sendMessageAsync(ActionType.Hello, JSONObject.toJSONString(helloModel));
-    }
-
-    protected Future<Boolean> sendHeartBeatAsync() {
-        return sendMessageAsync(ActionType.HeartBeat, "");
-    }
-
-    protected Future<Boolean> sendMessageAsync(int actionType, String body) {
+    public Future<Boolean> sendMessageAsync(long roomId, BilibiliWebSocketFrame frame) {
         return threadPoolExecutor.submit(() -> {
-//            log.debug("send {}, {}", actionType, body);
-            String cbody = body == null ? "" : body;
-            var payload = cbody.getBytes(StandardCharsets.UTF_8);
-            var size = payload.length + BilibiliWebSocketHeader.HEADER_LENGTH;
-            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(size, ProtocolVersion.ClientSend,
-                                                                                 actionType);
-            socketChannel.write(ByteBuffer.wrap(header.array()));
-            socketChannel.write(ByteBuffer.wrap(payload));
+            sendMessage(socketChannel, frame);
             return true;
         });
-
     }
 
-    /**
-     * <p>
-     * This method will use {@code this.bilibiliMessageFactory}
-     * to create {@link GenericBilibiliMessage} and call listeners.
-     *
-     * </p>
-     *
-     * @param frame An intact socket frame
-     */
-    protected void handleData(BilibiliWebSocketFrame frame) {
-        List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(frame);
-        callListeners(messages);
+    @Override
+    protected long getTrueRoomId(long roomId) throws NoNetworkConnectionException, NoRoomFoundException {
+        this.roomInit = apiClient.getRoomInit(roomId).getData();
+        return roomInit.getRoomId();
     }
 
-    protected void callListeners(List<GenericBilibiliMessage> messages) {
-        for (GenericBilibiliMessage message : messages) {
-            if (message instanceof LiveBeginModel || message instanceof LiveEndModel) {
-                StatusChangedEvent statusChangedEvent = createStatusChangedEvent(message);
-                for (Consumer<StatusChangedEvent> consumer : this.statusChangedHandlers) {
-                    consumer.accept(statusChangedEvent);
-                }
-                continue;
-            }
-            MessageReceivedEvent event = createMessageEvent(message);
-            try {
-                for (Consumer<MessageReceivedEvent> consumer : this.messageReceivedListeners) {
-                    consumer.accept(event);
-                }
-            } catch (Exception e) {
-                log.error("{} {}", e.getMessage(), Arrays.toString(e.getStackTrace()));
-            }
-        }
+    @Override
+    protected StatusChangedEvent createStatusChangedEvent(GenericStatusChangedModel message) {
+
+        return new StatusChangedEvent(roomInit.getRoomId(), socketChannel,
+                                      message.getStatus());
     }
 
-    private StatusChangedEvent createStatusChangedEvent(GenericBilibiliMessage message) {
-        StatusChangedEvent event = new StatusChangedEvent()
-                .setMessage(message)
-                .setRoomId(roomInit.getRoomId())
-                .setUid(roomInit.getUid());
-        if (message instanceof LiveEndModel) {
-            event.setStatus(StatusChangedEvent.Status.PREPARING);
-        } else if (message instanceof LiveBeginModel) {
-            event.setStatus(StatusChangedEvent.Status.BEGIN);
-        }
-        return event;
-    }
-
+    @Override
     protected MessageReceivedEvent createMessageEvent(GenericBilibiliMessage message) {
-        return new MessageReceivedEvent().setMessage(message);
+        return new MessageReceivedEvent(message, roomInit.getRoomId(), socketChannel);
     }
 
-    protected void readThread() {
-        try {
-            // All unused data is stored here
-            ByteBuffer buffer = ByteBuffer.allocate(4096);
-
-            while (true) {
-                try {
-                    lock.lock();
-                    if (!this.isConnected()) {
-                        return;
-                    }
-                    int readSize = socketChannel.read(buffer);
-                    // socket is closed
-                    if (readSize == -1) {
-                        throw new IOException();
-                    }
-                    buffer.flip();
-                    BilibiliWebSocketFrame frame;
-                    ByteBuffer tempBuffer = buffer.asReadOnlyBuffer();
-                    try {
-                        frame = BilibiliWebSocketFrame.resolve(tempBuffer);
-                        buffer.position(tempBuffer.position());
-                    } catch (BufferUnderflowException e) {
-                        buffer = ByteBuffer.allocate(buffer.capacity() * 2).put(buffer);
-                        continue;
-                    }
-                    if (frame != null) {
-                        handleData(frame);
-                    }
-                    // Although we don't know whether the type of the body,
-                    // but we can make sure an intact header-body is correctly extracted.
-                    // Then reset data.
-                    buffer.compact();
-
-
-                } finally {
-                    lock.unlock();
-                }
-            }
-        } catch (IOException e) {
-            threadPoolExecutor.submit(() -> {
-                try {
-                    disconnectWithoutEvent();
-                    tryReconnect();
-                } catch (Exception ignored) {
-                }
-            });
-        }
-    }
-
-    private boolean connectWithTrueRoomId(Long roomId) throws NoNetworkConnectionException {
+    @Override
+    protected boolean connectToTrueRoomId(long roomId) throws NoNetworkConnectionException {
         try {
             lock.lock();
-            if (this.isConnected()) {
+            if (this.isOpen()) {
                 return false;
             }
 
@@ -282,6 +144,96 @@ public class TcpDanmakuClient implements DanmakuClient {
         return false;
     }
 
+    protected Future<Boolean> sendHelloAsync() {
+        HelloModel helloModel = HelloModel.newDefault(roomInit.getRoomId(), danmakuServerInfo.getToken());
+        return sendMessageAsync(ActionType.Hello, JSONObject.toJSONString(helloModel));
+    }
+
+    protected Future<Boolean> sendHeartBeatAsync() {
+        return sendMessageAsync(ActionType.HeartBeat, "");
+    }
+
+    protected Future<Boolean> sendMessageAsync(int actionType, String body) {
+        return threadPoolExecutor.submit(() -> {
+//            log.debug("send {}, {}", actionType, body);
+            String cbody = body == null ? "" : body;
+            var payload = cbody.getBytes(StandardCharsets.UTF_8);
+            var size = payload.length + BilibiliWebSocketHeader.HEADER_LENGTH;
+            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(size, ProtocolVersion.ClientSend,
+                                                                                 actionType);
+            socketChannel.write(ByteBuffer.wrap(header.array()));
+            socketChannel.write(ByteBuffer.wrap(payload));
+            return true;
+        });
+
+    }
+
+    /**
+     * <p>
+     * This method will use {@code this.bilibiliMessageFactory}
+     * to create {@link GenericBilibiliMessage} and call listeners.
+     *
+     * </p>
+     *
+     * @param frame An intact socket frame
+     */
+    protected void handleData(BilibiliWebSocketFrame frame) {
+        List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(frame);
+        callListeners(messages);
+    }
+
+
+    protected void readThread() {
+        try {
+            // All unused data is stored here
+            ByteBuffer buffer = ByteBuffer.allocate(4096);
+
+            while (true) {
+                try {
+                    lock.lock();
+                    if (!this.isOpen()) {
+                        return;
+                    }
+                    int readSize = socketChannel.read(buffer);
+                    // socket is closed
+                    if (readSize == -1) {
+                        throw new IOException();
+                    }
+                    buffer.flip();
+                    BilibiliWebSocketFrame frame;
+                    ByteBuffer tempBuffer = buffer.asReadOnlyBuffer();
+                    try {
+                        frame = BilibiliWebSocketFrame.resolve(tempBuffer);
+                        buffer.position(tempBuffer.position());
+                    } catch (BufferUnderflowException e) {
+                        buffer = ByteBuffer.allocate(buffer.capacity() * 2).put(buffer);
+                        continue;
+                    }
+                    if (frame != null) {
+                        handleData(frame);
+                    }
+                    // Although we don't know whether the type of the body,
+                    // but we can make sure an intact header-body is correctly extracted.
+                    // Then reset data.
+                    buffer.compact();
+
+
+                } finally {
+                    lock.unlock();
+                }
+            }
+        } catch (IOException e) {
+            threadPoolExecutor.submit(() -> {
+                try {
+                    disconnectWithoutEvent();
+                    tryReconnect();
+                } catch (Exception ignored) {
+                }
+            });
+        }
+    }
+
+
     private void tryReconnect() throws IOException {
 
         int tryTimes = 0;
@@ -291,7 +243,7 @@ public class TcpDanmakuClient implements DanmakuClient {
                      roomInit.getShortId(),
                      tryTimes);
             try {
-                if (connectWithTrueRoomId(roomInit.getRoomId())) {
+                if (connectToTrueRoomId(roomInit.getRoomId())) {
                     return;
                 }
             } catch (NoNetworkConnectionException e) {
@@ -302,13 +254,10 @@ public class TcpDanmakuClient implements DanmakuClient {
                 }
             }
         }
-        disconnect();
+        close();
         for (var handler : statusChangedHandlers) {
-            StatusChangedEvent event = new StatusChangedEvent()
-                    .setMessage(null)
-                    .setStatus(StatusChangedEvent.Status.DISCONNECT)
-                    .setRoomId(roomInit.getRoomId())
-                    .setUid(roomInit.getUid());
+            StatusChangedEvent event = new StatusChangedEvent(roomInit.getRoomId(), socketChannel,
+                                                              GenericStatusChangedModel.Status.DISCONNECT);
             handler.accept(event);
         }
     }

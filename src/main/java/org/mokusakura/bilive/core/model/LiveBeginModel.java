@@ -26,7 +26,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class LiveBeginModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+public class LiveBeginModel extends GenericStatusChangedModel implements Serializable, Cloneable {
     private static final long serializationUID = 56426857468L;
     private Long roomid;
     private String liveKey;
@@ -39,8 +39,10 @@ public class LiveBeginModel extends GenericBilibiliMessage implements Serializab
         JSONObject jsonObject = JSONObject.parseObject(json);
 
         LiveBeginModel res = jsonObject.toJavaObject(LiveBeginModel.class);
-        res.setRawMessage(json)
+        res.setStatus(Status.BEGIN)
+                .setRawMessage(json)
                 .setMessageType(MessageType.LIVE_START);
+
         if (res.getRoomid() == null) {
             res.setRoomid(Long.valueOf(jsonObject.getString("roomid")));
         }
