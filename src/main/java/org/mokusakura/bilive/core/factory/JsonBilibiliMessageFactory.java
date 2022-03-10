@@ -57,7 +57,7 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
                 BilibiliWebSocketHeader.ProtocolVersion.PureJson) {
             throw new IllegalArgumentException("Wrong protocol version");
         }
-        String json = new String(frame.getWebSocketBody().array(), StandardCharsets.UTF_8);
+        String json = StandardCharsets.UTF_8.decode(frame.getWebSocketBody()).toString();
         List<GenericBilibiliMessage> res = new ArrayList<>();
         GenericBilibiliMessage message = null;
         try {

@@ -41,6 +41,6 @@ public class TestFactory {
 
     @SneakyThrows
     void link() {
-        danmakuClient.connect(21452505);
+        danmakuClient.connect(22894962);
     }
 }

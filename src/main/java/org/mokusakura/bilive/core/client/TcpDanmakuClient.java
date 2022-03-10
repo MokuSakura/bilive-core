@@ -16,6 +16,7 @@ import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
@@ -142,11 +143,10 @@ public class TcpDanmakuClient implements DanmakuClient {
      *
      * </p>
      *
-     * @param header the socket header
-     * @param body   the socket body
+     * @param frame An intact socket frame
      */
-    protected void handleData(BilibiliWebSocketHeader header, ByteBuffer body) {
-        List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(new BilibiliWebSocketFrame(header, body));
+    protected void handleData(BilibiliWebSocketFrame frame) {
+        List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(frame);
         callListeners(messages);
     }
 
@@ -190,7 +190,8 @@ public class TcpDanmakuClient implements DanmakuClient {
     protected void readThread() {
         try {
             // All unused data is stored here
-            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            ByteBuffer buffer = ByteBuffer.allocate(4096);
+
             while (true) {
                 try {
                     lock.lock();
@@ -203,30 +204,22 @@ public class TcpDanmakuClient implements DanmakuClient {
                         throw new IOException();
                     }
                     buffer.flip();
-                    // Not enough to be a complete header
-                    if (buffer.remaining() < BilibiliWebSocketHeader.HEADER_LENGTH) {
+                    BilibiliWebSocketFrame frame;
+                    ByteBuffer tempBuffer = buffer.asReadOnlyBuffer();
+                    try {
+                        frame = BilibiliWebSocketFrame.resolve(tempBuffer);
+                        buffer.position(tempBuffer.position());
+                    } catch (BufferUnderflowException e) {
+                        buffer = ByteBuffer.allocate(buffer.capacity() * 2).put(buffer);
                         continue;
                     }
-
-                    int totalLength = buffer.getInt(BilibiliWebSocketHeader.TOTAL_LENGTH_OFFSET);
-                    // Not enough to be a complete package
-                    if (buffer.remaining() < totalLength) {
-                        // Buffer capacity is not enough, so we allocate a new one with doubled capacity
-                        if (buffer.limit() == buffer.capacity()) {
-                            buffer = ByteBuffer.allocate(buffer.capacity() * 2)
-                                    .put(buffer);
-                        }
-                        continue;
-
+                    if (frame != null) {
+                        handleData(frame);
                     }
-                    BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(buffer, true);
-                    byte[] body = new byte[header.getTotalLength() - header.getHeaderLength()];
-                    buffer.get(body);
                     // Although we don't know whether the type of the body,
                     // but we can make sure an intact header-body is correctly extracted.
-                    handleData(header, ByteBuffer.wrap(body));
+                    // Then reset data.
                     buffer.compact();
-                    // The reset data.
 
 
                 } finally {
