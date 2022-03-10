@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core.factory;
+package org.mokusakura.bilive.core.protocol;
 
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
@@ -7,10 +7,7 @@ import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.Inflater;
 
@@ -18,11 +15,12 @@ import java.util.zip.Inflater;
  * @author MokuSakura
  */
 @Log4j2
-public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory {
-    private final BilibiliMessageFactory defaultBilibiliMessageFactory;
+public class CompressedProtocolResolver implements BilibiliLiveMessageProtocolResolver {
+    private final BilibiliLiveMessageProtocolResolver defaultBilibiliLiveMessageProtocolResolver;
 
-    public CompressedBilibiliMessageFactory(BilibiliMessageFactory defaultBilibiliMessageFactory) {
-        this.defaultBilibiliMessageFactory = defaultBilibiliMessageFactory;
+    public CompressedProtocolResolver(
+            BilibiliLiveMessageProtocolResolver defaultBilibiliLiveMessageProtocolResolver) {
+        this.defaultBilibiliLiveMessageProtocolResolver = defaultBilibiliLiveMessageProtocolResolver;
     }
 
     @Override
@@ -34,12 +32,13 @@ public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory 
         List<BilibiliWebSocketFrame> frames = new LinkedList<>();
         while (decompressedData.hasRemaining()) {
             BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(decompressedData, true);
-            byte[] body = new byte[header.getTotalLength() - header.getHeaderLength()];
-            decompressedData.get(body);
-            frames.add(new BilibiliWebSocketFrame(header, ByteBuffer.wrap(body)));
+            ByteBuffer body = decompressedData.slice();
+            body.limit(body.position() + header.getTotalLength() - header.getHeaderLength());
+            frames.add(new BilibiliWebSocketFrame(header, body));
         }
         return frames.stream()
-                .flatMap(webSocketFrame -> defaultBilibiliMessageFactory.create(webSocketFrame).stream())
+                .flatMap(webSocketFrame -> defaultBilibiliLiveMessageProtocolResolver.create(webSocketFrame).stream())
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 

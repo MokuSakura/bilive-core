@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core.factory;
+package org.mokusakura.bilive.core.protocol;
 
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.model.*;
@@ -13,14 +13,14 @@ import java.util.regex.Pattern;
  * @author MokuSakura
  */
 @Log4j2
-public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
+public class JsonMessageResolver implements BilibiliLiveMessageProtocolResolver {
     private final Map<String, Function<String, GenericBilibiliMessage>> cmdConstructorMap = new HashMap<>();
     private static final Pattern CMD_PATTERN = Pattern.compile(
             "(?=[^\\\\])\"cmd(?=[^\\\\])\":.*?(?=[^\\\\])\"(.*?)(?=[^\\\\])\"");
 
 
-    public static JsonBilibiliMessageFactory createDefault() {
-        JsonBilibiliMessageFactory res = new JsonBilibiliMessageFactory();
+    public static JsonMessageResolver createDefault() {
+        JsonMessageResolver res = new JsonMessageResolver();
         res.register("GUARD_BUY", GuardBuyModel::createFromJson);
         res.register("DANMU_MSG", CommentModel::createFromJson);
         res.register("LIVE", LiveBeginModel::createFromJson);
@@ -31,8 +31,8 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
         return res;
     }
 
-    public static JsonBilibiliMessageFactory createDefault(Map<String, Function<String, GenericBilibiliMessage>> map) {
-        JsonBilibiliMessageFactory res = createDefault();
+    public static JsonMessageResolver createDefault(Map<String, Function<String, GenericBilibiliMessage>> map) {
+        JsonMessageResolver res = createDefault();
         for (Map.Entry<String, Function<String, GenericBilibiliMessage>> entry : map.entrySet()) {
             res.register(entry.getKey(), entry.getValue());
         }
@@ -65,7 +65,7 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
             Matcher matcher = CMD_PATTERN.matcher(json);
 
             if (!matcher.find()) {
-                return null;
+                return res;
             }
             String cmd = matcher.group(1);
             cmd = Objects.requireNonNullElse(cmd, "");

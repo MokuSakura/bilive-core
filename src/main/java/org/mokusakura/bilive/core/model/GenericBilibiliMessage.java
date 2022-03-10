@@ -2,7 +2,7 @@ package org.mokusakura.bilive.core.model;
 
 import lombok.*;
 import lombok.experimental.Accessors;
-import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
+import org.mokusakura.bilive.core.protocol.BilibiliLiveMessageProtocolResolver;
 import org.mokusakura.bilive.core.util.CloneUtils;
 
 import java.io.Serializable;
@@ -10,7 +10,7 @@ import java.io.Serializable;
 /**
  * <p>
  * Generic Bilibili Message.
- * Using {@link BilibiliMessageFactory#create(BilibiliWebSocketFrame)} )} to create a instance.
+ * Using {@link BilibiliLiveMessageProtocolResolver#create(BilibiliWebSocketFrame)} )} to create a instance.
  * </p>
  *
  * @author MokuSakura

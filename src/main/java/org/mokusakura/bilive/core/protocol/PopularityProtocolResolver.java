@@ -1,4 +1,4 @@
-package org.mokusakura.bilive.core.factory;
+package org.mokusakura.bilive.core.protocol;
 
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
@@ -11,7 +11,7 @@ import java.util.List;
  * @author MokuSakura
  */
 @Log4j2
-public class PopularityBilibiliMessageFactory implements BilibiliMessageFactory {
+public class PopularityProtocolResolver implements BilibiliLiveMessageProtocolResolver {
     @Override
     public List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame) {
 //        log.debug("{}, {}", frame.getBilibiliWebSocketHeader().getActionType(),
