@@ -22,6 +22,18 @@ public class BilibiliWebSocketFrame implements Serializable, Cloneable {
     private final BilibiliWebSocketHeader bilibiliWebSocketHeader;
     private final ByteBuffer webSocketBody;
 
+    /**
+     * <p>
+     * Resolve and consume ByteBuffer.
+     * </p>
+     *
+     * @param buffer ByteBuffer from bilibili-live-ws.
+     * @return BilibiliWebSocketFrame if resolve successfully else null.
+     * If null, it means that the buffer is not enough to resolve.
+     * But you can use the origin buffer to receive more data.
+     * @throws BufferUnderflowException if the buffer is not enough to resolve and
+     *                                  the capacity of the buffer is not enough to receive the next frame.
+     */
     public static BilibiliWebSocketFrame resolve(ByteBuffer buffer) throws BufferUnderflowException {
         // Not enough to be a complete header
         if (buffer.remaining() < BilibiliWebSocketHeader.HEADER_LENGTH) {
@@ -31,7 +43,7 @@ public class BilibiliWebSocketFrame implements Serializable, Cloneable {
         int totalLength = buffer.getInt(BilibiliWebSocketHeader.TOTAL_LENGTH_OFFSET);
         // Not enough to be a complete package
         if (buffer.remaining() < totalLength) {
-            // Buffer capacity is not enough, so we allocate a new one with doubled capacity
+            // Buffer capacity is not enough to receive the next frame
             if (buffer.limit() == buffer.capacity()) {
                 throw new BufferUnderflowException();
             }
