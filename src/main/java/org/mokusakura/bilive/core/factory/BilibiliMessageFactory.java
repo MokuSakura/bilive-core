@@ -8,6 +8,9 @@ import java.util.List;
 /**
  * @author MokuSakura
  */
+@FunctionalInterface
 public interface BilibiliMessageFactory {
     List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame);
+
+
 }

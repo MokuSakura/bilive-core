@@ -3,13 +3,18 @@ package org.mokusakura.bilive.core.client;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
+import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
+import org.mokusakura.bilive.core.event.DisconnectedEvent;
 import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
+import org.mokusakura.bilive.core.factory.BilibiliMessageFactoryDispatcher;
+import org.mokusakura.bilive.core.factory.EventFactoryDispatcher;
+import org.mokusakura.bilive.core.listener.Listener;
 import org.mokusakura.bilive.core.model.*;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
@@ -21,10 +26,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.concurrent.*;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -52,33 +58,57 @@ import java.util.concurrent.locks.ReentrantLock;
 @Log4j2
 public class TcpDanmakuClient extends AbstractDanmakuClient {
     public static final int TRY_TIMES = 3;
-    private final ScheduledExecutorService timer;
-
-
-    private final ThreadPoolExecutor threadPoolExecutor;
-    private final BilibiliMessageFactory bilibiliMessageFactory;
+    private final ExecutorService executorService;
+    private Timer timer;
     private final Lock lock;
-    private ScheduledFuture<?> heartBeatTask;
     private DanmakuServerInfo.HostListItem hostListItem;
-    private boolean closed;
+    private boolean closed = true;
     private SocketChannel socketChannel;
     private RoomInit roomInit;
     private DanmakuServerInfo danmakuServerInfo;
     private final BilibiliLiveApiClient apiClient;
 
-
-    public TcpDanmakuClient(BilibiliLiveApiClient apiClient, BilibiliMessageFactory bilibiliMessageFactory) {
+    public TcpDanmakuClient(
+            Collection<Listener<MessageReceivedEvent<?>>> messageReceivedListeners,
+            Collection<Listener<StatusChangedEvent<?>>> statusChangedHandlers,
+            EventFactoryDispatcher eventFactory,
+            BilibiliMessageFactory bilibiliMessageFactory,
+            ExecutorService executorService,
+            BilibiliLiveApiClient apiClient) {
+        super(messageReceivedListeners,
+              statusChangedHandlers,
+              eventFactory,
+              bilibiliMessageFactory);
+        this.executorService = executorService;
         this.apiClient = apiClient;
-        timer = new ScheduledThreadPoolExecutor(10);
-        messageReceivedListeners = new LinkedHashSet<>();
-        statusChangedHandlers = new LinkedHashSet<>();
-        threadPoolExecutor = new ThreadPoolExecutor(5, 10, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10));
-        lock = new ReentrantLock();
-        closed = true;
-
-        this.bilibiliMessageFactory = bilibiliMessageFactory;
+        this.lock = new ReentrantLock();
     }
 
+    public TcpDanmakuClient(EventFactoryDispatcher eventFactory,
+                            BilibiliMessageFactory bilibiliMessageFactory,
+                            ExecutorService executorService,
+                            BilibiliLiveApiClient apiClient) {
+        this(new ArrayList<>(),
+             new ArrayList<>(),
+             eventFactory,
+             bilibiliMessageFactory,
+             executorService,
+             apiClient);
+    }
+
+
+    public TcpDanmakuClient() {
+        this(EventFactoryDispatcher.newDefault(),
+             BilibiliMessageFactoryDispatcher.createDefault());
+    }
+
+    public TcpDanmakuClient(EventFactoryDispatcher eventFactory,
+                            BilibiliMessageFactory bilibiliMessageFactory) {
+        this(eventFactory,
+             bilibiliMessageFactory,
+             Executors.newCachedThreadPool(),
+             new HttpLiveApiClient());
+    }
 
     @Override
     public boolean isOpen() {
@@ -92,7 +122,7 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
 
     @Override
     public Future<Boolean> sendMessageAsync(long roomId, BilibiliWebSocketFrame frame) {
-        return threadPoolExecutor.submit(() -> {
+        return executorService.submit(() -> {
             sendMessage(socketChannel, frame);
             return true;
         });
@@ -105,25 +135,13 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
     }
 
     @Override
-    protected StatusChangedEvent createStatusChangedEvent(GenericStatusChangedModel message) {
-
-        return new StatusChangedEvent(roomInit.getRoomId(), socketChannel,
-                                      message.getStatus());
-    }
-
-    @Override
-    protected MessageReceivedEvent createMessageEvent(GenericBilibiliMessage message) {
-        return new MessageReceivedEvent(message, roomInit.getRoomId(), socketChannel);
-    }
-
-    @Override
     protected boolean connectToTrueRoomId(long roomId) throws NoNetworkConnectionException {
         try {
             lock.lock();
             if (this.isOpen()) {
                 return false;
             }
-
+            timer = new Timer(true);
             danmakuServerInfo = apiClient.getDanmakuServerInfo(roomId).getData();
             var hostListItems = Arrays.stream(danmakuServerInfo.getHostList())
                     .filter(hostListItem -> hostListItem.getHost() != null && hostListItem.getPort() != null)
@@ -135,20 +153,22 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
             var host = hostListItem.getHost();
             var port = hostListItem.getPort();
             try {
-                // Connection is setup here
+                // Connection is set up here
                 socketChannel = SocketChannel.open();
                 socketChannel.connect(new InetSocketAddress(host, port));
                 sendHelloAsync().get();
                 sendHeartBeatAsync().get();
                 // Start read Thread
                 new Thread(this::readThread).start();
-                heartBeatTask = timer.scheduleAtFixedRate(() -> {
-                    try {
-                        this.sendHeartBeatAsync().get(10, TimeUnit.SECONDS);
-                    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-                        log.error(Arrays.toString(e.getStackTrace()));
+                timer.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        try {
+                            sendHeartBeat(socketChannel);
+                        } catch (IOException ignored) {
+                        }
                     }
-                }, 10, 30, TimeUnit.SECONDS);
+                }, 30, 30);
                 closed = false;
                 log.info("Connect to {}:{} of Room {}, short id {}, with token {}", host, port, roomInit.getRoomId(),
                          roomInit.getShortId(), danmakuServerInfo.getToken());
@@ -163,8 +183,8 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
     }
 
     protected Future<Boolean> sendHelloAsync() {
-        HelloModel helloModel = HelloModel.newDefault(roomInit.getRoomId(), danmakuServerInfo.getToken());
-        return sendMessageAsync(ActionType.Hello, JSONObject.toJSONString(helloModel));
+        HelloMessage helloMessage = HelloMessage.newDefault(roomInit.getRoomId(), danmakuServerInfo.getToken());
+        return sendMessageAsync(ActionType.Hello, JSONObject.toJSONString(helloMessage));
     }
 
     protected Future<Boolean> sendHeartBeatAsync() {
@@ -172,7 +192,7 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
     }
 
     protected Future<Boolean> sendMessageAsync(int actionType, String body) {
-        return threadPoolExecutor.submit(() -> {
+        return executorService.submit(() -> {
 //            log.debug("send {}, {}", actionType, body);
             String cbody = body == null ? "" : body;
             var payload = cbody.getBytes(StandardCharsets.UTF_8);
@@ -197,7 +217,7 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
      */
     protected void handleData(BilibiliWebSocketFrame frame) {
         List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(frame);
-        callListeners(messages);
+        callListeners(roomInit.getRoomId(), messages);
     }
 
 
@@ -241,7 +261,7 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
                 }
             }
         } catch (IOException e) {
-            threadPoolExecutor.submit(() -> {
+            executorService.submit(() -> {
                 try {
                     disconnectWithoutEvent();
                     tryReconnect();
@@ -253,18 +273,22 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
 
 
     private void tryReconnect() throws IOException {
-
+        long firstTryTime = System.currentTimeMillis();
+        long lastTryTime = firstTryTime;
         int tryTimes = 0;
+        Exception exception = null;
         while (tryTimes++ < TRY_TIMES) {
             log.info("Try reconnect to room {} short id {}. Try times: {}",
                      roomInit.getRoomId(),
                      roomInit.getShortId(),
                      tryTimes);
             try {
+                lastTryTime = System.currentTimeMillis();
                 if (connectToTrueRoomId(roomInit.getRoomId())) {
                     return;
                 }
             } catch (NoNetworkConnectionException e) {
+                exception = e;
                 try {
                     Thread.sleep(Duration.ofSeconds(10).toMillis());
                 } catch (InterruptedException ignored) {
@@ -273,10 +297,14 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
             }
         }
         close();
+        DisconnectedEvent disconnectedEvent = new DisconnectedEvent(StatusChangedMessage.class);
+        disconnectedEvent.setFirstTryTime(firstTryTime)
+                .setLastTryTime(lastTryTime)
+                .setTryCount(tryTimes)
+                .setException(exception)
+                .setRoomId(roomInit.getRoomId());
         for (var handler : statusChangedHandlers) {
-            StatusChangedEvent event = new StatusChangedEvent(roomInit.getRoomId(), socketChannel,
-                                                              GenericStatusChangedModel.Status.DISCONNECT);
-            handler.accept(event);
+            handler.onEvent(disconnectedEvent);
         }
     }
 
@@ -301,7 +329,7 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
             throw e;
         } finally {
             socketChannel = null;
-            heartBeatTask.cancel(true);
+            timer.cancel();
             lock.unlock();
         }
     }

@@ -16,7 +16,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class WelcomeModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+public class WelcomeMessage extends GenericBilibiliMessage implements Serializable, Cloneable {
     private static final long serializationUID = -26846535216354653L;
     private Integer uid;
 

@@ -18,7 +18,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class SendGiftModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+public class SendGiftMessage extends GenericBilibiliMessage implements Serializable, Cloneable {
     private static final Long serializationUID = 918374598163287456L;
     private String action;
     private String batchComboId;
@@ -70,14 +70,14 @@ public class SendGiftModel extends GenericBilibiliMessage implements Serializabl
     private Long totalCoin;
     private Long uid;
 
-    public static SendGiftModel createFromJson(String jsonStr) {
+    public static SendGiftMessage createFromJson(String jsonStr) {
         JSONObject obj = JSON.parseObject(jsonStr);
-        JSONObject.parseObject(jsonStr, SendGiftModel.class);
+        JSONObject.parseObject(jsonStr, SendGiftMessage.class);
         JSONObject dataObject = obj.getJSONObject("data");
         if (dataObject != null) {
             obj = dataObject;
         }
-        SendGiftModel res = obj.toJavaObject(SendGiftModel.class);
+        SendGiftMessage res = obj.toJavaObject(SendGiftMessage.class);
         res.setMessageType(MessageType.GIFT_SEND)
                 .setRawMessage(jsonStr);
         return res;

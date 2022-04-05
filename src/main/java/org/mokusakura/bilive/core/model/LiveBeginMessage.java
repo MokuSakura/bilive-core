@@ -26,7 +26,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class LiveBeginModel extends GenericStatusChangedModel implements Serializable, Cloneable {
+public class LiveBeginMessage extends StatusChangedMessage implements Serializable, Cloneable {
     private static final long serializationUID = 56426857468L;
     private Long roomid;
     private String liveKey;
@@ -35,10 +35,10 @@ public class LiveBeginModel extends GenericStatusChangedModel implements Seriali
     private String livePlatform;
     private String liveModel;
 
-    public static LiveBeginModel createFromJson(String json) {
+    public static LiveBeginMessage createFromJson(String json) {
         JSONObject jsonObject = JSONObject.parseObject(json);
 
-        LiveBeginModel res = jsonObject.toJavaObject(LiveBeginModel.class);
+        LiveBeginMessage res = jsonObject.toJavaObject(LiveBeginMessage.class);
         res.setStatus(Status.BEGIN)
                 .setRawMessage(json)
                 .setMessageType(MessageType.LIVE_START);

@@ -21,7 +21,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class InteractWord extends GenericBilibiliMessage implements Serializable, Cloneable {
+public class InteractWordMessage extends GenericBilibiliMessage implements Serializable, Cloneable {
     private static final long serialVersionUID = 32342356535445L;
     private final Map<String, Object> additionalProperties = new HashMap<>();
     private Contribution contribution;
@@ -38,13 +38,13 @@ public class InteractWord extends GenericBilibiliMessage implements Serializable
     private Long triggerTime;
     private String unameColor;
 
-    public static InteractWord createFromJson(String json) {
+    public static InteractWordMessage createFromJson(String json) {
         JSONObject obj = JSONObject.parseObject(json);
         JSONObject dataObject = obj.getJSONObject("data");
         if (dataObject != null) {
             obj = dataObject;
         }
-        InteractWord res = obj.toJavaObject(InteractWord.class);
+        InteractWordMessage res = obj.toJavaObject(InteractWordMessage.class);
         res.setMessageType(MessageType.INTERACT_WORD);
         res.setRawMessage(json);
         return res;

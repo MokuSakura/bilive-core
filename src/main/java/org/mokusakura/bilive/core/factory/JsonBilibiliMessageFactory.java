@@ -21,13 +21,13 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
 
     public static JsonBilibiliMessageFactory createDefault() {
         JsonBilibiliMessageFactory res = new JsonBilibiliMessageFactory();
-        res.register("GUARD_BUY", GuardBuyModel::createFromJson);
-        res.register("DANMU_MSG", CommentModel::createFromJson);
-        res.register("LIVE", LiveBeginModel::createFromJson);
-        res.register("PREPARING", LiveEndModel::createFromJson);
-        res.register("SUPER_CHAT_MESSAGE", SCModel::createFromJson);
-        res.register("SEND_GIFT", SendGiftModel::createFromJson);
-        res.register("INTERACT_WORD", InteractWord::createFromJson);
+        res.register("GUARD_BUY", BuyGuardMessage::createFromJson);
+        res.register("DANMU_MSG", CommentMessage::createFromJson);
+        res.register("LIVE", LiveBeginMessage::createFromJson);
+        res.register("PREPARING", LiveEndMessage::createFromJson);
+        res.register("SUPER_CHAT_MESSAGE", SuperChatMessage::createFromJson);
+        res.register("SEND_GIFT", SendGiftMessage::createFromJson);
+        res.register("INTERACT_WORD", InteractWordMessage::createFromJson);
         return res;
     }
 

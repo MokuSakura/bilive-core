@@ -16,7 +16,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class HelloModel implements Serializable, Cloneable {
+public class HelloMessage implements Serializable, Cloneable {
     public static final long serializationUID = -568728646842L;
     private Long uid;
     private Long roomid;
@@ -26,8 +26,8 @@ public class HelloModel implements Serializable, Cloneable {
     private Integer type;
     private String key;
 
-    public static HelloModel newDefault(Long roomId, String token) {
-        return HelloModel.builder()
+    public static HelloMessage newDefault(Long roomId, String token) {
+        return HelloMessage.builder()
                 .uid(0L)
                 .roomid(roomId)
                 .protover(0)

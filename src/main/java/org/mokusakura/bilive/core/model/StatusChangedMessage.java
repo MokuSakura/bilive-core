@@ -14,7 +14,7 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class GenericStatusChangedModel extends GenericBilibiliMessage {
+public abstract class StatusChangedMessage extends GenericBilibiliMessage {
     private String status;
 
     public static class Status {

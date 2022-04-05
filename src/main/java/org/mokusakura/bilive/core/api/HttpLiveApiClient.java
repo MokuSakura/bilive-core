@@ -26,6 +26,10 @@ public class HttpLiveApiClient extends AbstractBilibiliApiClient implements Bili
         super(httpClient);
     }
 
+    public HttpLiveApiClient() {
+        this(HttpClient.newBuilder().build());
+    }
+
     @Override
     public BilibiliApiResponse<RoomInfo> getRoomInfo(long roomId) throws NoRoomFoundException,
             NoNetworkConnectionException {

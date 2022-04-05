@@ -19,7 +19,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class SCModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+public class SuperChatMessage extends GenericBilibiliMessage implements Serializable, Cloneable {
 
 
     private final static long serialVersionUID = 8275693861288435948L;
@@ -52,13 +52,13 @@ public class SCModel extends GenericBilibiliMessage implements Serializable, Clo
     private Long uid;
     private UserInfo userInfo;
 
-    public static SCModel createFromJson(String json) {
+    public static SuperChatMessage createFromJson(String json) {
         JSONObject jsonObject = JSONObject.parseObject(json);
         JSONObject dataObject = jsonObject.getJSONObject("data");
         if (dataObject != null) {
             jsonObject = dataObject;
         }
-        SCModel res = jsonObject.toJavaObject(SCModel.class);
+        SuperChatMessage res = jsonObject.toJavaObject(SuperChatMessage.class);
         res.setRawMessage(json);
         res.setMessageType(MessageType.SUPER_CHAT);
         return res;

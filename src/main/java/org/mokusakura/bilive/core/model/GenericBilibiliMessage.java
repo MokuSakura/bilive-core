@@ -25,6 +25,8 @@ import java.io.Serializable;
 public abstract class GenericBilibiliMessage implements Serializable, Cloneable {
     public static final long serializationUID = -3584268486724L;
     private String messageType;
+    private Long roomId;
+    private Long timestamp;
     private String rawMessage;
 
     @Override

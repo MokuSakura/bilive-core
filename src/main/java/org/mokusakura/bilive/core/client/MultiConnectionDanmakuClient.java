@@ -2,14 +2,12 @@ package org.mokusakura.bilive.core.client;
 
 import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
+import org.mokusakura.bilive.core.api.model.BilibiliApiResponse;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
-import org.mokusakura.bilive.core.event.MessageReceivedEvent;
-import org.mokusakura.bilive.core.event.StatusChangedEvent;
+import org.mokusakura.bilive.core.api.model.RoomInit;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
-import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
-import org.mokusakura.bilive.core.model.GenericStatusChangedModel;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -85,17 +83,8 @@ public class MultiConnectionDanmakuClient extends AbstractDanmakuClient {
 
     @Override
     long getTrueRoomId(long roomId) throws NoNetworkConnectionException, NoRoomFoundException {
-        return 0;
-    }
-
-    @Override
-    StatusChangedEvent createStatusChangedEvent(GenericStatusChangedModel model) {
-        return null;
-    }
-
-    @Override
-    MessageReceivedEvent createMessageEvent(GenericBilibiliMessage message) {
-        return null;
+        BilibiliApiResponse<RoomInit> roomInit = apiClient.getRoomInit(roomId);
+        return roomInit.getData().getRoomId();
     }
 
     @Override

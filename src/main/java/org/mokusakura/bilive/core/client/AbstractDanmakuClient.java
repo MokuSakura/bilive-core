@@ -1,12 +1,15 @@
 package org.mokusakura.bilive.core.client;
 
+import org.mokusakura.bilive.core.event.GenericEvent;
 import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
+import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
+import org.mokusakura.bilive.core.factory.EventFactoryDispatcher;
+import org.mokusakura.bilive.core.listener.Listener;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
-import org.mokusakura.bilive.core.model.GenericStatusChangedModel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -14,20 +17,25 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * @author MokuSakura
  */
 public abstract class AbstractDanmakuClient implements DanmakuClient {
-    protected Collection<Consumer<MessageReceivedEvent>> messageReceivedListeners;
-    protected Collection<Consumer<StatusChangedEvent>> statusChangedHandlers;
+    protected Collection<Listener<MessageReceivedEvent<?>>> messageReceivedListeners;
+    protected Collection<Listener<StatusChangedEvent<?>>> statusChangedHandlers;
+    protected EventFactoryDispatcher eventFactory;
+    protected BilibiliMessageFactory bilibiliMessageFactory;
 
     public AbstractDanmakuClient(
-            Collection<Consumer<MessageReceivedEvent>> messageReceivedListeners,
-            Collection<Consumer<StatusChangedEvent>> statusChangedHandlers) {
+            Collection<Listener<MessageReceivedEvent<?>>> messageReceivedListeners,
+            Collection<Listener<StatusChangedEvent<?>>> statusChangedHandlers,
+            EventFactoryDispatcher eventFactory,
+            BilibiliMessageFactory bilibiliMessageFactory) {
         this.messageReceivedListeners = messageReceivedListeners;
         this.statusChangedHandlers = statusChangedHandlers;
+        this.eventFactory = eventFactory;
+        this.bilibiliMessageFactory = bilibiliMessageFactory;
     }
 
     public AbstractDanmakuClient() {
@@ -37,28 +45,40 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
 
     public static void sendMessage(SocketChannel socketChannel, BilibiliWebSocketFrame frame) throws IOException {
         socketChannel.write(ByteBuffer.wrap(frame.getBilibiliWebSocketHeader().array()));
-        socketChannel.write(frame.getWebSocketBody());
+        if (frame.getWebSocketBody() != null) {
+            socketChannel.write(ByteBuffer.wrap(frame.getWebSocketBody().array()));
+        }
+    }
+
+    public static void sendHeartBeat(SocketChannel socketChannel) throws IOException {
+        sendMessage(socketChannel, BilibiliWebSocketFrame.newHeartBeat());
     }
 
     abstract boolean connectToTrueRoomId(long roomId) throws NoNetworkConnectionException;
 
     abstract long getTrueRoomId(long roomId) throws NoNetworkConnectionException, NoRoomFoundException;
 
-    abstract StatusChangedEvent createStatusChangedEvent(GenericStatusChangedModel model);
-
-    abstract MessageReceivedEvent createMessageEvent(GenericBilibiliMessage message);
+    @Override
+    public Collection<Listener<MessageReceivedEvent<?>>> getMessageReceivedListener() {
+        return new ArrayList<>(messageReceivedListeners);
+    }
 
     @Override
-    public Collection<Consumer<MessageReceivedEvent>> clearMessageReceivedListeners() {
-        Collection<Consumer<MessageReceivedEvent>> res = new ArrayList<>(messageReceivedListeners);
+    public Collection<Listener<StatusChangedEvent<?>>> getStatusChangedListener() {
+        return new ArrayList<>(statusChangedHandlers);
+    }
+
+    @Override
+    public Collection<Listener<MessageReceivedEvent<?>>> clearMessageReceivedListeners() {
+        Collection<Listener<MessageReceivedEvent<?>>> res = new ArrayList<>(messageReceivedListeners);
         messageReceivedListeners.clear();
         return res;
     }
 
 
     @Override
-    public Collection<Consumer<StatusChangedEvent>> clearStatusChangedListeners() {
-        Collection<Consumer<StatusChangedEvent>> res = new ArrayList<>(statusChangedHandlers);
+    public Collection<Listener<StatusChangedEvent<?>>> clearStatusChangedListeners() {
+        Collection<Listener<StatusChangedEvent<?>>> res = new ArrayList<>(statusChangedHandlers);
         statusChangedHandlers.clear();
         return res;
     }
@@ -69,17 +89,17 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public void addMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
+    public void addMessageReceivedListener(Listener<MessageReceivedEvent<?>> consumer) {
         messageReceivedListeners.add(consumer);
     }
 
     @Override
-    public void addStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
+    public void addStatusChangedListener(Listener<StatusChangedEvent<?>> consumer) {
         statusChangedHandlers.add(consumer);
     }
 
     @Override
-    public Consumer<MessageReceivedEvent> removeMessageReceivedListener(Consumer<MessageReceivedEvent> consumer) {
+    public Listener<MessageReceivedEvent<?>> removeMessageReceivedListener(Listener<MessageReceivedEvent<?>> consumer) {
         if (this.messageReceivedListeners.remove(consumer)) {
             return consumer;
         } else {
@@ -88,7 +108,7 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
     }
 
     @Override
-    public Consumer<StatusChangedEvent> removeStatusChangedListener(Consumer<StatusChangedEvent> consumer) {
+    public Listener<StatusChangedEvent<?>> removeStatusChangedListener(Listener<StatusChangedEvent<?>> consumer) {
         if (this.statusChangedHandlers.remove(consumer)) {
             return consumer;
         } else {
@@ -96,18 +116,36 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
         }
     }
 
-
-    protected void callListeners(List<GenericBilibiliMessage> messages) {
-        for (GenericBilibiliMessage message : messages) {
-            if (message instanceof GenericStatusChangedModel) {
-                statusChangedHandlers.forEach(
-                        handler -> handler.accept(createStatusChangedEvent((GenericStatusChangedModel) message)));
-            } else {
-                messageReceivedListeners.forEach(handler -> handler.accept(createMessageEvent(message)));
+    protected void callListeners(long roomId, List<GenericBilibiliMessage> messages) {
+        for (var message : messages) {
+            var event = eventFactory.createEvent(roomId, message);
+            if (event == null) {
+                continue;
+            }
+            if (event instanceof StatusChangedEvent) {
+                for (var listener : statusChangedHandlers) {
+                    try {
+                        listener.onEvent((StatusChangedEvent<?>) event);
+                    } catch (Exception ignored) {
+                    }
+                }
+            } else if (event instanceof MessageReceivedEvent) {
+                for (var listener : messageReceivedListeners) {
+                    try {
+                        listener.onEvent((MessageReceivedEvent<?>) event);
+                    } catch (Exception ignored) {
+                    }
+                }
             }
         }
-
     }
 
+    protected List<GenericBilibiliMessage> createMessages(BilibiliWebSocketFrame frame) {
+        return bilibiliMessageFactory.create(frame);
+    }
+
+    protected GenericEvent<?> createEvent(long roomId, GenericBilibiliMessage message) {
+        return eventFactory.createEvent(roomId, message);
+    }
 
 }

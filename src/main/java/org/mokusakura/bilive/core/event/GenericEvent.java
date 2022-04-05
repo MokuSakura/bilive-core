@@ -1,21 +1,42 @@
 package org.mokusakura.bilive.core.event;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.experimental.Accessors;
 
-import java.nio.channels.SocketChannel;
+import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
+
 
 /**
  * @author MokuSakura
  */
-@Getter
-@Setter
-@Accessors(chain = true)
-@AllArgsConstructor
-public abstract class GenericEvent {
 
-    private final long roomId;
-    private final SocketChannel socketChannel;
+public abstract class GenericEvent<E extends GenericBilibiliMessage> {
+    private final Class<E> messageClass;
+    private long roomId;
+    private E message;
+
+    public GenericEvent(Class<E> messageClass) {
+        this.messageClass = messageClass;
+    }
+
+    public String getEventName() {
+        return messageClass.getSimpleName();
+    }
+
+
+    public long getRoomId() {
+        return roomId;
+    }
+
+    public GenericEvent<E> setRoomId(long roomId) {
+        this.roomId = roomId;
+        return this;
+    }
+
+    public E getMessage() {
+        return message;
+    }
+
+    public GenericEvent<E> setMessage(E message) {
+        this.message = message;
+        return this;
+    }
 }

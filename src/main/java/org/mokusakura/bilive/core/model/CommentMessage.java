@@ -21,7 +21,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class CommentModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+public class CommentMessage extends GenericBilibiliMessage implements Serializable, Cloneable {
     public static final long serializationUID = 23462346234354676L;
     private String commentText;
     private Boolean admin;
@@ -33,8 +33,8 @@ public class CommentModel extends GenericBilibiliMessage implements Serializable
     private String username;
     private Long timestamp;
 
-    public static CommentModel createFromJson(String json) {
-        JSONArray jsonArray = null;
+    public static CommentMessage createFromJson(String json) {
+        JSONArray jsonArray;
         try {
             jsonArray = JSON.parseArray(json);
 
@@ -42,22 +42,22 @@ public class CommentModel extends GenericBilibiliMessage implements Serializable
             JSONObject jsonObject = JSON.parseObject(json);
             jsonArray = jsonObject.getJSONArray("info");
         }
-        CommentModel commentModel = new CommentModel();
-        commentModel.setMessageType(MessageType.COMMENT);
-        commentModel.uid = jsonArray.getJSONArray(2).getLong(0);
-        commentModel.username = jsonArray.getJSONArray(2).getString(1);
-        commentModel.timestamp = jsonArray.getJSONObject(9).getLong("ts");
-        commentModel.commentText = jsonArray.getString(1);
-        commentModel.admin = "1".equals(jsonArray.getJSONArray(2).getString(2));
-        commentModel.vip = "1".equals(jsonArray.getJSONArray(2).getString(3));
-        commentModel.guardLevel = jsonArray.getInteger(7);
+        CommentMessage commentMessage = new CommentMessage();
+        commentMessage.setMessageType(MessageType.COMMENT);
+        commentMessage.uid = jsonArray.getJSONArray(2).getLong(0);
+        commentMessage.username = jsonArray.getJSONArray(2).getString(1);
+        commentMessage.timestamp = jsonArray.getJSONObject(9).getLong("ts");
+        commentMessage.commentText = jsonArray.getString(1);
+        commentMessage.admin = "1".equals(jsonArray.getJSONArray(2).getString(2));
+        commentMessage.vip = "1".equals(jsonArray.getJSONArray(2).getString(3));
+        commentMessage.guardLevel = jsonArray.getInteger(7);
         var medalArray = jsonArray.getJSONArray(3);
-        commentModel.setRawMessage(json);
+        commentMessage.setRawMessage(json);
         if (medalArray != null && medalArray.size() > 0) {
-            commentModel.medalLevel = jsonArray.getJSONArray(3).getInteger(0);
-            commentModel.medalName = jsonArray.getJSONArray(3).getString(1);
+            commentMessage.medalLevel = jsonArray.getJSONArray(3).getInteger(0);
+            commentMessage.medalName = jsonArray.getJSONArray(3).getString(1);
         }
-        return commentModel;
+        return commentMessage;
     }
 
     @Override

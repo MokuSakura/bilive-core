@@ -1,26 +1,18 @@
 package org.mokusakura.bilive.core.event;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.experimental.Accessors;
-
-import java.nio.channels.SocketChannel;
+import org.mokusakura.bilive.core.model.StatusChangedMessage;
 
 /**
  * @author MokuSakura
  */
-@Getter
-@Setter
-@Accessors(chain = true)
-public class StatusChangedEvent extends GenericEvent {
-    private final String status;
-
-    public StatusChangedEvent(long roomId,
-                              SocketChannel socketChannel,
-                              String status) {
-        super(roomId, socketChannel);
-        this.status = status;
+public abstract class StatusChangedEvent<E extends StatusChangedMessage> extends MessageReceivedEvent<E> {
+    public StatusChangedEvent(Class<E> messageClass) {
+        super(messageClass);
     }
 
+    public boolean isExceptionCaused() {
+        return getException() != null;
+    }
 
+    public abstract Exception getException();
 }

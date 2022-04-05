@@ -17,13 +17,13 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class LiveEndModel extends GenericStatusChangedModel implements Serializable, Cloneable {
+public class LiveEndMessage extends StatusChangedMessage implements Serializable, Cloneable {
     private static final long serializationUID = -9874265486584L;
     private Long roomid;
 
-    public static LiveEndModel createFromJson(String json) {
+    public static LiveEndMessage createFromJson(String json) {
         var obj = JSON.parseObject(json);
-        LiveEndModel res = new LiveEndModel();
+        LiveEndMessage res = new LiveEndMessage();
         res.setStatus(Status.PREPARING);
         res.setMessageType(MessageType.LIVE_END);
         res.setRoomid(obj.getLongValue("roomid"));

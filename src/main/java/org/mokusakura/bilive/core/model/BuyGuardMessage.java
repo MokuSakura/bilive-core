@@ -19,7 +19,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class GuardBuyModel extends GenericBilibiliMessage implements Serializable, Cloneable {
+public class BuyGuardMessage extends GenericBilibiliMessage implements Serializable, Cloneable {
     private static final long serializationUID = -812373894723948L;
     private final Map<String, Object> additionalProperties = new HashMap<>();
     private Long guardLevel;
@@ -32,13 +32,13 @@ public class GuardBuyModel extends GenericBilibiliMessage implements Serializabl
     private Long startTime;
     private Long endTime;
 
-    public static GuardBuyModel createFromJson(String json) {
+    public static BuyGuardMessage createFromJson(String json) {
         JSONObject obj = JSONObject.parseObject(json);
         JSONObject dataObject = obj.getJSONObject("data");
         if (dataObject != null) {
             obj = dataObject;
         }
-        GuardBuyModel res = obj.toJavaObject(GuardBuyModel.class);
+        BuyGuardMessage res = obj.toJavaObject(BuyGuardMessage.class);
         res.setMessageType(MessageType.GUARD_BUY);
         res.setRawMessage(json);
         return res;
