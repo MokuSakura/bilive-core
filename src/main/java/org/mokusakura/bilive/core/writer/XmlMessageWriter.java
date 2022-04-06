@@ -1,6 +1,7 @@
 package org.mokusakura.bilive.core.writer;
 
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 import org.mokusakura.bilive.core.model.MessageType;
 import org.mokusakura.bilive.core.util.PropertiesUtils;
@@ -22,8 +23,9 @@ import java.util.zip.GZIPOutputStream;
 /**
  * @author MokuSakura
  */
-@Log4j2
+
 public class XmlMessageWriter extends FileBasedWriter implements MessageWriter {
+    private static final Logger log = LogManager.getLogger(XmlMessageWriter.class);
     private final Lock lock;
     private XMLStreamWriter xmlWriter;
     private Long roomId;

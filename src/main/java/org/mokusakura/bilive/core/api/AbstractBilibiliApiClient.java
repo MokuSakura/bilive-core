@@ -2,7 +2,8 @@ package org.mokusakura.bilive.core.api;
 
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mokusakura.bilive.core.api.model.BilibiliApiResponse;
 import org.mokusakura.bilive.core.exception.BilibiliApiCodeNotZeroException;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
@@ -17,8 +18,8 @@ import java.util.Arrays;
 /**
  * @author MokuSakura
  */
-@Log4j2
 public abstract class AbstractBilibiliApiClient implements BilibiliApiClient {
+    private static final Logger log = LogManager.getLogger(AbstractBilibiliApiClient.class);
     public static final String HEADER_ACCEPT = "application/json, text/javascript, */*; q=0.01";
     public static final String HEADER_ORIGIN = "https://live.bilibili.com";
     public static final String HEADER_REFERER = "https://live.bilibili.com/";

@@ -1,12 +1,14 @@
 package org.mokusakura.bilive.core;
 
-import lombok.SneakyThrows;
-import lombok.extern.log4j.Log4j2;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.client.SubscribableClientImpl;
 import org.mokusakura.bilive.core.event.CommentEvent;
+import org.mokusakura.bilive.core.event.SendGiftEvent;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactoryDispatcher;
 import org.mokusakura.bilive.core.factory.PopularityBilibiliMessageFactory;
 import org.mokusakura.bilive.core.listener.AsyncListener;
@@ -18,17 +20,18 @@ import java.util.concurrent.Semaphore;
 /**
  * @author MokuSakura
  */
-@Log4j2
 @SuppressWarnings("all")
 public class TestFactory {
+    private static final Logger log = LogManager.getLogger(TestFactory.class);
     private final SubscribableClientImpl danmakuClient;
     private final BilibiliLiveApiClient bilibiliLiveApiClient;
     private final BilibiliMessageFactoryDispatcher bilibiliMessageFactory;
     private final HttpClient httpClient;
     private final Semaphore semaphore = new Semaphore(1);
 
-    @SneakyThrows
-    public TestFactory() {
+
+    public TestFactory() throws Exception {
+
         httpClient = HttpClient.newHttpClient();
         semaphore.acquire();
         bilibiliLiveApiClient = new HttpLiveApiClient(httpClient);
@@ -40,8 +43,8 @@ public class TestFactory {
 //        danmakuClient.subscribe(CommentEvent.class, e -> log.info(e.getMessage().getCommentText()));
         danmakuClient.subscribe(CommentEvent.class,
                                 (ParallelListener<CommentEvent>) e -> log.info(e.getMessage().getCommentText()));
-        danmakuClient.subscribe(CommentEvent.class,
-                                (AsyncListener<CommentEvent>) e -> log.warn(e.getMessage().getCommentText()));
+        danmakuClient.subscribe(SendGiftEvent.class,
+                                (AsyncListener<SendGiftEvent>) e -> log.warn(e.getMessage().getPrice()));
 
 //        danmakuClient.addMessageReceivedListener(event -> {
 //            log.info(event.getMessage().getRawMessage());
@@ -54,9 +57,8 @@ public class TestFactory {
 //        });
     }
 
-    @SneakyThrows
     @Test
-    void link() {
+    void link() throws Exception {
         danmakuClient.connect(7777);
         semaphore.acquire();
     }

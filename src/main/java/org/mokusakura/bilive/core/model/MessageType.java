@@ -21,4 +21,5 @@ public class MessageType {
     // 房间信息更新
     public static final String ROOM_CHANGE = "RoomChange";
     public static final String INTERACT_WORD = "InteractWord";
+    public static final String WELCOME = "Welcome";
 }

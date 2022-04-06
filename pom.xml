@@ -5,7 +5,7 @@
     <groupId>org.mokusakura</groupId>
     <packaging>jar</packaging>
     <artifactId>bilive-core</artifactId>
-    <version>dev-0.2.0</version>
+    <version>dev-0.2.1</version>
     <name>core</name>
     <description>Core library of BiLive</description>
 
@@ -28,12 +28,6 @@
             <version>4.5.13</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.20</version>
-            <scope>provided</scope>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>

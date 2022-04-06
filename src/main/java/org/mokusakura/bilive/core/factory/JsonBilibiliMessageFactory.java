@@ -1,6 +1,7 @@
 package org.mokusakura.bilive.core.factory;
 
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mokusakura.bilive.core.model.*;
 
 import java.nio.charset.StandardCharsets;
@@ -12,9 +13,10 @@ import java.util.regex.Pattern;
 /**
  * @author MokuSakura
  */
-@Log4j2
+
 public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
     private final Map<String, Function<String, GenericBilibiliMessage>> cmdConstructorMap = new HashMap<>();
+    private static final Logger log = LogManager.getLogger(JsonBilibiliMessageFactory.class);
     private static final Pattern CMD_PATTERN = Pattern.compile(
             "(?=[^\\\\])\"cmd(?=[^\\\\])\":.*?(?=[^\\\\])\"(.*?)(?=[^\\\\])\"");
 
@@ -58,7 +60,7 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
             throw new IllegalArgumentException("Wrong protocol version");
         }
         String json = StandardCharsets.UTF_8.decode(frame.getWebSocketBody()).toString();
-        List<GenericBilibiliMessage> res = new ArrayList<>();
+        List<GenericBilibiliMessage> res = new ArrayList<>(1);
         GenericBilibiliMessage message = null;
         try {
 
@@ -76,10 +78,11 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
             if (message != null) {
                 res.add(message);
             }
-            return res;
         } catch (Exception e) {
-            log.error("{} {} {} {}", e.getMessage(), e.getClass(), Arrays.toString(e.getStackTrace()), json);
-            return null;
+            log.error("{}\n{}\n{}\n{}", e.getMessage(), e.getClass().getName(), Arrays.toString(e.getStackTrace()),
+                      json);
+
         }
+        return res;
     }
 }

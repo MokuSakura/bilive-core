@@ -1,7 +1,8 @@
 package org.mokusakura.bilive.core.client;
 
 import com.alibaba.fastjson.JSONObject;
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
@@ -56,9 +57,9 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author MokuSakura
  */
-@Log4j2
 public class TcpDanmakuClient extends AbstractDanmakuClient {
     public static final int TRY_TIMES = 3;
+    private static final Logger log = LogManager.getLogger(TcpDanmakuClient.class);
     private final ExecutorService executorService;
     private Timer timer;
     private final Lock lock;

@@ -1,6 +1,7 @@
 package org.mokusakura.bilive.core.client;
 
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.model.BilibiliApiResponse;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
@@ -37,8 +38,8 @@ import java.util.concurrent.Future;
  *
  * @author MokuSakura
  */
-@Log4j2
 public class MultiConnectionDanmakuClient extends AbstractDanmakuClient {
+    private static final Logger log = LogManager.getLogger(MultiConnectionDanmakuClient.class);
     private Map<Long, SocketChannel> socketChannelMap = new ConcurrentHashMap<>(16);
     private Selector selector;
     private BilibiliLiveApiClient apiClient;

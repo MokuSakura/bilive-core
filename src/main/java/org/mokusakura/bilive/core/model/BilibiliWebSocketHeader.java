@@ -1,10 +1,5 @@
 package org.mokusakura.bilive.core.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
-import lombok.extern.log4j.Log4j2;
 import org.mokusakura.bilive.core.util.CloneUtils;
 
 import java.io.Serializable;
@@ -13,11 +8,6 @@ import java.nio.ByteBuffer;
 /**
  * @author MokuSakura
  */
-@Log4j2
-@Getter
-@ToString
-@Builder
-@AllArgsConstructor
 public class BilibiliWebSocketHeader implements Serializable, Cloneable {
     private static final long serializationUID = -628468546534265L;
     public static final short HEADER_LENGTH = 16;
@@ -111,6 +101,15 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         return CloneUtils.deepClone(this);
     }
 
+    public BilibiliWebSocketHeader(int totalLength, short headerLength, short protocolVersion, int actionType,
+                                   int sequence) {
+        this.totalLength = totalLength;
+        this.headerLength = headerLength;
+        this.protocolVersion = protocolVersion;
+        this.actionType = actionType;
+        this.sequence = sequence;
+    }
+
     /**
      * <p>
      * The length of the return is {@link BilibiliWebSocketHeader#HEADER_LENGTH}.
@@ -126,6 +125,26 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         headBuffer.putInt(ACTION_OFFSET, actionType);
         headBuffer.putInt(SEQUENCE_OFFSET, sequence);
         return headBuffer.array();
+    }
+
+    public int getTotalLength() {
+        return totalLength;
+    }
+
+    public short getHeaderLength() {
+        return headerLength;
+    }
+
+    public short getProtocolVersion() {
+        return protocolVersion;
+    }
+
+    public int getActionType() {
+        return actionType;
+    }
+
+    public int getSequence() {
+        return sequence;
     }
 
     public static class ActionType {

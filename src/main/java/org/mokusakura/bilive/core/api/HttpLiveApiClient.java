@@ -1,6 +1,7 @@
 package org.mokusakura.bilive.core.api;
 
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mokusakura.bilive.core.api.model.*;
 import org.mokusakura.bilive.core.exception.BilibiliApiCodeNotZeroException;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
@@ -11,10 +12,9 @@ import java.net.http.HttpClient;
 /**
  * @author MokuSakura
  */
-@Log4j2
 public class HttpLiveApiClient extends AbstractBilibiliApiClient implements BilibiliLiveApiClient {
 
-
+    private static final Logger log = LogManager.getLogger(HttpLiveApiClient.class);
     public static final String BILIBILI_LIVE_ROOM_INFO_PATH = "/room/v1/Room/get_info?id=%d";
     public static final String BILIBILI_LIVE_USER_INFO_PATH = "/live_user/v1/UserInfo/get_anchor_in_room?roomid=%d";
     public static final String BILIBILI_LIVE_DANMAKU_INFO_PATH = "/xlive/web-room/v1/index/getDanmuInfo?id=%d&type=0";
