@@ -6,9 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.mokusakura.bilive.core.api.BilibiliLiveApiClient;
 import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.client.SubscribableClientImpl;
-import org.mokusakura.bilive.core.event.SendGiftEvent;
+import org.mokusakura.bilive.core.event.CommentEvent;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactoryDispatcher;
 import org.mokusakura.bilive.core.factory.PopularityBilibiliMessageFactory;
+import org.mokusakura.bilive.core.listener.AsyncListener;
+import org.mokusakura.bilive.core.listener.ParallelListener;
 
 import java.net.http.HttpClient;
 import java.util.concurrent.Semaphore;
@@ -17,6 +19,7 @@ import java.util.concurrent.Semaphore;
  * @author MokuSakura
  */
 @Log4j2
+@SuppressWarnings("all")
 public class TestFactory {
     private final SubscribableClientImpl danmakuClient;
     private final BilibiliLiveApiClient bilibiliLiveApiClient;
@@ -33,7 +36,13 @@ public class TestFactory {
         PopularityBilibiliMessageFactory popularityBilibiliMessageFactory = new PopularityBilibiliMessageFactory();
         bilibiliMessageFactory.register((short) 1, popularityBilibiliMessageFactory);
         danmakuClient = new SubscribableClientImpl();
-        danmakuClient.subscribe(SendGiftEvent.class, e -> log.info(e.getMessage().getGiftName()));
+        danmakuClient.setLingerMillSeconds(1000000);
+//        danmakuClient.subscribe(CommentEvent.class, e -> log.info(e.getMessage().getCommentText()));
+        danmakuClient.subscribe(CommentEvent.class,
+                                (ParallelListener<CommentEvent>) e -> log.info(e.getMessage().getCommentText()));
+        danmakuClient.subscribe(CommentEvent.class,
+                                (AsyncListener<CommentEvent>) e -> log.warn(e.getMessage().getCommentText()));
+
 //        danmakuClient.addMessageReceivedListener(event -> {
 //            log.info(event.getMessage().getRawMessage());
 //        });
@@ -48,7 +57,7 @@ public class TestFactory {
     @SneakyThrows
     @Test
     void link() {
-        danmakuClient.connect(213L);
+        danmakuClient.connect(7777);
         semaphore.acquire();
     }
 }

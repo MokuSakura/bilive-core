@@ -116,9 +116,8 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
         }
     }
 
-    protected void callListeners(long roomId, List<GenericBilibiliMessage> messages) {
-        for (var message : messages) {
-            var event = eventFactory.createEvent(roomId, message);
+    protected void callListeners(long roomId, List<GenericEvent<?>> events) {
+        for (var event : events) {
             if (event == null) {
                 continue;
             }
@@ -146,6 +145,18 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
 
     protected GenericEvent<?> createEvent(long roomId, GenericBilibiliMessage message) {
         return eventFactory.createEvent(roomId, message);
+    }
+
+    protected List<GenericEvent<?>> createEvents(long roomId, List<GenericBilibiliMessage> messages) {
+        List<GenericEvent<?>> res = new ArrayList<>(messages.size());
+        for (var message : messages) {
+            var event = createEvent(roomId, message);
+            if (event == null) {
+                continue;
+            }
+            res.add(event);
+        }
+        return res;
     }
 
 }

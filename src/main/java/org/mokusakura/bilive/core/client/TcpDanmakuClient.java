@@ -7,6 +7,7 @@ import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.api.model.DanmakuServerInfo;
 import org.mokusakura.bilive.core.api.model.RoomInit;
 import org.mokusakura.bilive.core.event.DisconnectedEvent;
+import org.mokusakura.bilive.core.event.GenericEvent;
 import org.mokusakura.bilive.core.event.MessageReceivedEvent;
 import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
@@ -217,7 +218,14 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
      */
     protected void handleData(BilibiliWebSocketFrame frame) {
         List<GenericBilibiliMessage> messages = bilibiliMessageFactory.create(frame);
-        callListeners(roomInit.getRoomId(), messages);
+        if (messages.isEmpty()) {
+            return;
+        }
+        List<GenericEvent<?>> events = createEvents(roomInit.getRoomId(), messages);
+        if (events.isEmpty()) {
+            return;
+        }
+        callListeners(roomInit.getRoomId(), events);
     }
 
 
