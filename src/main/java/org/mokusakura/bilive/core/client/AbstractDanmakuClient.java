@@ -154,6 +154,7 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
             if (event == null) {
                 continue;
             }
+            event.setDanmakuClient(this);
             res.add(event);
         }
         return res;

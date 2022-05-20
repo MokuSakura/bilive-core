@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * @author MokuSakura
  */
-public abstract class Register<E, T> {
+abstract class Register<E, T> {
     Map<E, T> map = new HashMap<>();
 
     /**

@@ -1,6 +1,7 @@
 package org.mokusakura.bilive.core.event;
 
 
+import org.mokusakura.bilive.core.client.DanmakuClient;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
 
@@ -12,6 +13,7 @@ public abstract class GenericEvent<E extends GenericBilibiliMessage> {
     private final Class<E> messageClass;
     private long roomId;
     private E message;
+    private DanmakuClient danmakuClient;
 
     public GenericEvent(Class<E> messageClass) {
         this.messageClass = messageClass;
@@ -37,6 +39,19 @@ public abstract class GenericEvent<E extends GenericBilibiliMessage> {
 
     public GenericEvent<E> setMessage(E message) {
         this.message = message;
+        return this;
+    }
+
+    public Class<E> getMessageClass() {
+        return messageClass;
+    }
+
+    public DanmakuClient getDanmakuClient() {
+        return danmakuClient;
+    }
+
+    public GenericEvent<E> setDanmakuClient(DanmakuClient danmakuClient) {
+        this.danmakuClient = danmakuClient;
         return this;
     }
 }
