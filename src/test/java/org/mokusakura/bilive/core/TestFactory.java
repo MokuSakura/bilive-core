@@ -39,7 +39,7 @@ public class TestFactory {
         PopularityBilibiliMessageFactory popularityBilibiliMessageFactory = new PopularityBilibiliMessageFactory();
         bilibiliMessageFactory.register((short) 1, popularityBilibiliMessageFactory);
         danmakuClient = new SubscribableClientImpl();
-        danmakuClient.setLingerMillSeconds(1000000);
+//        danmakuClient.setLingerMillSeconds(1000000);
 //        danmakuClient.subscribe(CommentEvent.class, e -> log.info(e.getMessage().getCommentText()));
         danmakuClient.subscribe(CommentEvent.class,
                                 (ParallelListener<CommentEvent>) e -> log.info(e.getMessage().getCommentText()));

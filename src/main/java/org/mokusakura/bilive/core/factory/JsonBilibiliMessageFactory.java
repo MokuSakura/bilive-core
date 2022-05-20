@@ -19,6 +19,7 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
     private static final Logger log = LogManager.getLogger(JsonBilibiliMessageFactory.class);
     private static final Pattern CMD_PATTERN = Pattern.compile(
             "(?=[^\\\\])\"cmd(?=[^\\\\])\":.*?(?=[^\\\\])\"(.*?)(?=[^\\\\])\"");
+    private static final Set<String> unregisteredCmd = new TreeSet<>();
 
 
     public static JsonBilibiliMessageFactory createDefault() {
@@ -74,6 +75,12 @@ public class JsonBilibiliMessageFactory implements BilibiliMessageFactory {
             Function<String, GenericBilibiliMessage> constructor = cmdConstructorMap.get(cmd);
             if (constructor != null) {
                 message = constructor.apply(json);
+            } else {
+                // TODO performance is affected here
+                if (log.isDebugEnabled() && !unregisteredCmd.contains(cmd)) {
+                    unregisteredCmd.add(cmd);
+                    log.debug("Unregistered cmd found: {}. Json: {}", cmd, json);
+                }
             }
             if (message != null) {
                 res.add(message);
