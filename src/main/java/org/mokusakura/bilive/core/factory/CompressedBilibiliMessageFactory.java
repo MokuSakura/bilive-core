@@ -6,13 +6,10 @@ import org.mokusakura.bilive.core.client.TcpDanmakuClient;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
+import org.mokusakura.bilive.core.util.ByteBufferUtils;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.Inflater;
 
@@ -22,6 +19,8 @@ import java.util.zip.Inflater;
 public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory {
     private final BilibiliMessageFactory defaultBilibiliMessageFactory;
     private static final Logger log = LogManager.getLogger(TcpDanmakuClient.class);
+    ThreadLocal<Map<String, Object>> threadLocal = new InheritableThreadLocal<>();
+
     public CompressedBilibiliMessageFactory(BilibiliMessageFactory defaultBilibiliMessageFactory) {
         this.defaultBilibiliMessageFactory = defaultBilibiliMessageFactory;
     }
@@ -36,7 +35,8 @@ public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory 
         while (decompressedData.hasRemaining()) {
             BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(decompressedData, true);
             ByteBuffer body = decompressedData.duplicate()
-                    .limit(decompressedData.position() + header.getTotalLength() - header.getHeaderLength());
+                    .limit(decompressedData.position() + header.getTotalLength() - header.getHeaderLength())
+                    .asReadOnlyBuffer();
             decompressedData.position(decompressedData.position() + header.getTotalLength() - header.getHeaderLength());
             frames.add(new BilibiliWebSocketFrame(header, body));
         }
@@ -46,21 +46,34 @@ public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory 
     }
 
     protected ByteBuffer decompressed(ByteBuffer originalData) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Map<String, Object> map = threadLocal.get();
+        if (map == null) {
+            map = createThreadLocal();
+        }
+        Inflater inflater = (Inflater) map.get("inflater");
+        ByteBuffer byteBuffer = (ByteBuffer) map.get("byteBuffer");
+        inflater.reset();
+        byteBuffer.clear();
+
         try {
-            Inflater inflater = new Inflater();
-            byte[] buffer = new byte[1024];
             inflater.setInput(originalData);
-            int inflateLength;
-            while ((inflateLength = inflater.inflate(buffer, 0, buffer.length)) != 0) {
-                baos.write(buffer, 0, inflateLength);
+            while (inflater.inflate(byteBuffer) != 0) {
+                byteBuffer = ByteBufferUtils.ensureCapacity(byteBuffer);
             }
-            inflater.end();
         } catch (Exception e) {
             log.error(Arrays.toString(e.getStackTrace()));
             log.error(e.getMessage());
             return null;
         }
-        return baos.toByteArray().length == 0 ? null : ByteBuffer.wrap(baos.toByteArray());
+        return byteBuffer.flip();
+    }
+
+    private Map<String, Object> createThreadLocal() {
+        Map<String, Object> map = new TreeMap<>();
+        map.put("inflater", new Inflater());
+        map.put("byteBuffer", ByteBuffer.allocate(1024 * 8));
+        threadLocal.set(map);
+        return map;
+
     }
 }
