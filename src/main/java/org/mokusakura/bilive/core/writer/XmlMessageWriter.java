@@ -188,7 +188,7 @@ public class XmlMessageWriter extends FileBasedWriter implements MessageWriter {
 
             xmlWriter.writeStartDocument();
             writeSeparator();
-
+            xmlWriter.writeStartElement("root");
             xmlWriter.writeStartElement("room-id");
             xmlWriter.writeCharacters(roomId.toString());
             xmlWriter.writeEndElement();
@@ -263,6 +263,9 @@ public class XmlMessageWriter extends FileBasedWriter implements MessageWriter {
             if (xmlWriter == null) {
                 return;
             }
+            // i element
+            xmlWriter.writeEndElement();
+            // root element
             xmlWriter.writeEndElement();
             xmlWriter.flush();
             xmlWriter.close();
