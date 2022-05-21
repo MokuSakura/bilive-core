@@ -17,17 +17,17 @@ public class BilibiliMessageFactoryDispatcher extends Register<Short, BilibiliMe
     private static final Set<Short> unregisteredProtocolVersion = new TreeSet<>();
     private static final Logger log = LogManager.getLogger();
 
-    public static BilibiliMessageFactoryDispatcher getInstance() {
+    public static BilibiliMessageFactoryDispatcher getShared() {
         return Holder.INSTANCE;
     }
 
     public static BilibiliMessageFactoryDispatcher newDefault() {
         BilibiliMessageFactoryDispatcher res = new BilibiliMessageFactoryDispatcher();
 
-        res.register(BilibiliWebSocketHeader.ProtocolVersion.PureJson,
+        res.register(BilibiliWebSocketHeader.DataFormat.PureJson,
                      JsonBilibiliMessageFactory.createDefault());
 
-        res.register(BilibiliWebSocketHeader.ProtocolVersion.CompressedBuffer,
+        res.register(BilibiliWebSocketHeader.DataFormat.CompressedBuffer,
                      new CompressedBilibiliMessageFactory(res));
         return res;
     }
@@ -43,7 +43,7 @@ public class BilibiliMessageFactoryDispatcher extends Register<Short, BilibiliMe
 
     @Override
     public List<GenericBilibiliMessage> create(BilibiliWebSocketFrame frame) {
-        short protocolVersion = frame.getBilibiliWebSocketHeader().getProtocolVersion();
+        short protocolVersion = frame.getBilibiliWebSocketHeader().getDataFormat();
         BilibiliMessageFactory bilibiliMessageFactory = map.get(
                 protocolVersion);
         if (bilibiliMessageFactory == null) {

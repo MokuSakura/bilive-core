@@ -24,12 +24,12 @@ public class TestMultiConnectionDanmakuClient {
     private final Semaphore semaphore = new Semaphore(1);
     private final AtomicInteger integer = new AtomicInteger(0);
     HttpLiveApiClient liveApiClient = new HttpLiveApiClient();
-    List<MultiConnectionDanmakuClient> danmakuClients = new ArrayList<>();
+    List<MultiplexingDanmakuClient> danmakuClients = new ArrayList<>();
 
     public TestMultiConnectionDanmakuClient() throws Exception {
         semaphore.acquire();
         for (int i = 0; i < 10; i++) {
-            MultiConnectionDanmakuClient danmakuClient = new MultiConnectionDanmakuClient(liveApiClient);
+            MultiplexingDanmakuClient danmakuClient = new MultiplexingDanmakuClient(liveApiClient);
             danmakuClient.subscribe(CommentEvent.class, e -> integer.incrementAndGet());
             danmakuClient.subscribe(SuperChatEvent.class, e -> integer.incrementAndGet());
             danmakuClient.subscribe(SendGiftEvent.class, e -> integer.incrementAndGet());
@@ -47,12 +47,12 @@ public class TestMultiConnectionDanmakuClient {
 
     @Test
     public void testConnect() throws Exception {
-        MultiConnectionDanmakuClient danmakuClient = danmakuClients.get(0);
-//        danmakuClient.subscribe(CommentEvent.class,e->integer.incrementAndGet());
-//        danmakuClient.subscribe(SuperChatEvent.class,e->integer.incrementAndGet());
-//        danmakuClient.subscribe(BuyGuardEvent.class,e->integer.incrementAndGet());
-//        danmakuClient.subscribe(SendGiftEvent.class,e->integer.incrementAndGet());
-        danmakuClient.connect(555);
+        MultiConnectionDanmakuClient danmakuClient = MultiConnectionDanmakuClient.newDefault();
+        danmakuClient.subscribe(CommentEvent.class, e -> integer.incrementAndGet());
+        danmakuClient.subscribe(SuperChatEvent.class, e -> integer.incrementAndGet());
+        danmakuClient.subscribe(BuyGuardEvent.class, e -> integer.incrementAndGet());
+        danmakuClient.subscribe(SendGiftEvent.class, e -> integer.incrementAndGet());
+        System.out.println(danmakuClient.connect(22625025));
         semaphore.acquire();
     }
 
@@ -63,7 +63,7 @@ public class TestMultiConnectionDanmakuClient {
         int count = 0;
         try {
             for (int i = 0; i < 10; i++) {
-                MultiConnectionDanmakuClient danmakuClient = danmakuClients.get(i);
+                MultiplexingDanmakuClient danmakuClient = danmakuClients.get(i);
                 for (int page = 1; page <= 1; page++) {
                     String urlWithParam = url + page;
                     BilibiliApiResponse<JSONObject> hashMapBilibiliApiResponse = liveApiClient.get(urlWithParam,

@@ -20,7 +20,7 @@ import org.mokusakura.bilive.core.listener.Listener;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ActionType;
-import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.ProtocolVersion;
+import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader.DataFormat;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 import org.mokusakura.bilive.core.model.HelloMessage;
 
@@ -51,7 +51,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>
  * This class will use a new thread which is not a daemon thread to connect to the server.
  * And {@link #sendMessageAsync(long, BilibiliWebSocketFrame)}  will use a thread in ThreadPoolExecutor to send message.
- * Consider using{@link MultiConnectionDanmakuClient} if you want to connect to multiple danmaku servers.
+ * Consider using{@link MultiplexingDanmakuClient} if you want to connect to multiple danmaku servers.
  * <p>
  * In this implementation, {@link #sendMessageAsync(long, BilibiliWebSocketFrame)}
  * will ignore room id if the instance is connected to a room.
@@ -106,8 +106,8 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
 
 
     public TcpDanmakuClient() {
-        this(EventFactoryDispatcher.getInstance(),
-             BilibiliMessageFactoryDispatcher.getInstance());
+        this(EventFactoryDispatcher.getShared(),
+             BilibiliMessageFactoryDispatcher.getShared());
     }
 
     public TcpDanmakuClient(EventFactoryDispatcher eventFactory,
@@ -115,7 +115,7 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
         this(eventFactory,
              bilibiliMessageFactory,
              SHARED,
-             HttpLiveApiClient.getInstance());
+             HttpLiveApiClient.getShared());
     }
 
     @Override
@@ -216,7 +216,7 @@ public class TcpDanmakuClient extends AbstractDanmakuClient {
             String cbody = body == null ? "" : body;
             var payload = cbody.getBytes(StandardCharsets.UTF_8);
             var size = payload.length + BilibiliWebSocketHeader.HEADER_LENGTH;
-            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(size, ProtocolVersion.ClientSend,
+            BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(size, DataFormat.ClientSend,
                                                                                  actionType);
             socketChannel.write(ByteBuffer.wrap(header.array()));
             socketChannel.write(ByteBuffer.wrap(payload));

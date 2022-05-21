@@ -13,7 +13,7 @@ import java.util.Map;
 
 @SuppressWarnings("ALL")
 public class EventFactoryDispatcher extends Register<String, EventFactory> implements EventFactory {
-    public static EventFactoryDispatcher getInstance() {
+    public static EventFactoryDispatcher getShared() {
         return Holder.INSTANCE;
     }
 

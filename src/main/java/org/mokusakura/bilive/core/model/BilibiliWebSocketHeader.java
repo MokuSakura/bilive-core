@@ -13,18 +13,18 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
     public static final short HEADER_LENGTH = 16;
     public static final int TOTAL_LENGTH_OFFSET = 0;
     public static final int HEADER_LENGTH_OFFSET = 4;
-    public static final int PROTOCOL_VERSION_OFFSET = 6;
+    public static final int DATA_FORMAT_VERSION_OFFSET = 6;
     public static final int ACTION_OFFSET = 8;
     public static final int SEQUENCE_OFFSET = 12;
     public static final int BODY_OFFSET = 16;
     public static final BilibiliWebSocketHeader HEART_BEAT_HEADER = new BilibiliWebSocketHeader(0,
                                                                                                 HEADER_LENGTH,
-                                                                                                ProtocolVersion.ClientSend,
+                                                                                                DataFormat.ClientSend,
                                                                                                 ActionType.HeartBeat,
                                                                                                 1);
     private final int totalLength;
     private final short headerLength;
-    private final short protocolVersion;
+    private final short dataFormat;
     private final int actionType;
     private final int sequence;
 
@@ -45,22 +45,13 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         return newInstance(bytes, true);
     }
 
-    /**
-     * <p>
-     * Since We don't know the meaning of {@link ProtocolVersion} and {@link ActionType} when sending data to the server.
-     * We recommend to use the method only to decode the data came from server, which means {@code fromServer} is always true.
-     * </p>
-     *
-     * @param bytes      Data
-     * @param fromServer Weather the data came from server.
-     * @return Decoded Header
-     */
-    public static BilibiliWebSocketHeader newInstance(byte[] bytes, boolean fromServer) {
-        if (bytes.length < HEADER_LENGTH) {
-            throw new IllegalArgumentException("Bytes length less than 16");
-        }
-        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, HEADER_LENGTH);
-        return newInstance(byteBuffer);
+    public BilibiliWebSocketHeader(int totalLength, short headerLength, short dataFormat, int actionType,
+                                   int sequence) {
+        this.totalLength = totalLength;
+        this.headerLength = headerLength;
+        this.dataFormat = dataFormat;
+        this.actionType = actionType;
+        this.sequence = sequence;
     }
 
     /**
@@ -76,27 +67,34 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         return newInstance(byteBuffer, false);
     }
 
+    /**
+     * <p>
+     * Since We don't know the meaning of {@link DataFormat} and {@link ActionType} when sending data to the server.
+     * We recommend to use the method only to decode the data came from server, which means {@code fromServer} is always true.
+     * </p>
+     *
+     * @param bytes      Data
+     * @param fromServer Weather the data came from server.
+     * @return Decoded Header
+     */
+    public static BilibiliWebSocketHeader newInstance(byte[] bytes, boolean fromServer) {
+        if (bytes.length < HEADER_LENGTH) {
+            throw new IllegalArgumentException("Bytes length less than 16");
+        }
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, HEADER_LENGTH);
+        return newInstance(byteBuffer);
+    }
+
     public static BilibiliWebSocketHeader newInstance(ByteBuffer byteBuffer, boolean consume) {
         int totalLength = consume ? byteBuffer.getInt() : byteBuffer.getInt(
                 byteBuffer.position() + TOTAL_LENGTH_OFFSET);
         short headerLength = consume ? byteBuffer.getShort() : byteBuffer.getShort(
                 byteBuffer.position() + HEADER_LENGTH_OFFSET);
-        short protocolVersionShort = consume ? byteBuffer.getShort() : byteBuffer.getShort(
-                byteBuffer.position() + PROTOCOL_VERSION_OFFSET);
+        short dataFormatShort = consume ? byteBuffer.getShort() : byteBuffer.getShort(
+                byteBuffer.position() + DATA_FORMAT_VERSION_OFFSET);
         int actionInt = consume ? byteBuffer.getInt() : byteBuffer.getInt(byteBuffer.position() + ACTION_OFFSET);
         int sequence = consume ? byteBuffer.getInt() : byteBuffer.getInt(byteBuffer.position() + SEQUENCE_OFFSET);
-        return new BilibiliWebSocketHeader(totalLength, headerLength, protocolVersionShort, actionInt, sequence);
-    }
-
-
-    public static BilibiliWebSocketHeader newInstance(long bodyLength, short protocolVersion,
-                                                      int actionType) {
-        if (actionType == ActionType.HeartBeat) {
-            return HEART_BEAT_HEADER;
-        }
-        assert bodyLength < 0xFFFFFFFFL;
-
-        return new BilibiliWebSocketHeader((int) bodyLength, HEADER_LENGTH, protocolVersion, actionType, 1);
+        return new BilibiliWebSocketHeader(totalLength, headerLength, dataFormatShort, actionInt, sequence);
     }
 
     @Override
@@ -104,13 +102,14 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         return CloneUtils.deepClone(this);
     }
 
-    public BilibiliWebSocketHeader(int totalLength, short headerLength, short protocolVersion, int actionType,
-                                   int sequence) {
-        this.totalLength = totalLength;
-        this.headerLength = headerLength;
-        this.protocolVersion = protocolVersion;
-        this.actionType = actionType;
-        this.sequence = sequence;
+    public static BilibiliWebSocketHeader newInstance(long bodyLength, short dataFormat,
+                                                      int actionType) {
+        if (actionType == ActionType.HeartBeat) {
+            return HEART_BEAT_HEADER;
+        }
+        assert bodyLength < 0xFFFFFFFFL;
+
+        return new BilibiliWebSocketHeader((int) bodyLength, HEADER_LENGTH, dataFormat, actionType, 1);
     }
 
     /**
@@ -124,7 +123,7 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         var headBuffer = ByteBuffer.allocate(HEADER_LENGTH);
         headBuffer.putInt(TOTAL_LENGTH_OFFSET, totalLength);
         headBuffer.putShort(HEADER_LENGTH_OFFSET, headerLength);
-        headBuffer.putShort(PROTOCOL_VERSION_OFFSET, protocolVersion);
+        headBuffer.putShort(DATA_FORMAT_VERSION_OFFSET, dataFormat);
         headBuffer.putInt(ACTION_OFFSET, actionType);
         headBuffer.putInt(SEQUENCE_OFFSET, sequence);
         return headBuffer.array();
@@ -138,8 +137,8 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         return headerLength;
     }
 
-    public short getProtocolVersion() {
-        return protocolVersion;
+    public short getDataFormat() {
+        return dataFormat;
     }
 
     public int getActionType() {
@@ -159,7 +158,7 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
         public static final int EnterRoom = 8;
     }
 
-    public static class ProtocolVersion {
+    public static class DataFormat {
         public static final short PureJson = 0;
         public static final short Popularity = 1;
         public static final short CompressedBuffer = 2;

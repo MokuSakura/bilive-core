@@ -73,7 +73,7 @@ public class BilibiliWebSocketFrame implements Serializable, Cloneable {
     public static BilibiliWebSocketFrame newHeartBeat() {
         BilibiliWebSocketHeader header = new BilibiliWebSocketHeader(BilibiliWebSocketHeader.HEADER_LENGTH,
                                                                      BilibiliWebSocketHeader.HEADER_LENGTH,
-                                                                     BilibiliWebSocketHeader.ProtocolVersion.ClientSend,
+                                                                     BilibiliWebSocketHeader.DataFormat.ClientSend,
                                                                      BilibiliWebSocketHeader.ActionType.HeartBeat, 0);
         return new BilibiliWebSocketFrame(header, null);
     }

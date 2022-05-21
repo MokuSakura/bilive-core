@@ -30,7 +30,7 @@ public class HttpLiveApiClient extends AbstractBilibiliApiClient implements Bili
         this(HttpClient.newBuilder().build());
     }
 
-    public static BilibiliLiveApiClient getInstance() {
+    public static BilibiliLiveApiClient getShared() {
         return Holder.INSTANCE;
     }
 

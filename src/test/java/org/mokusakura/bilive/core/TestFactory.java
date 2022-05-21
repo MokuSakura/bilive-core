@@ -78,7 +78,7 @@ public class TestFactory {
         int count = 0;
         int[] areaIds = {1, 2, 3, 5, 6, 9, 10, 11, 13};
         try {
-            for (int i = 0; i < 1000; i++) {
+            for (int i = 0; i < 500; i++) {
                 SubscribableClientImpl danmakuClient = new SubscribableClientImpl();
                 danmakuClient.subscribe(CommentEvent.class, e -> {
                     integer.incrementAndGet();
@@ -92,8 +92,8 @@ public class TestFactory {
                 danmakuClient.subscribe(BuyGuardEvent.class, e -> {
                     integer.incrementAndGet();
                 });
-                danmakuClient.connect(555);
-                count++;
+                danmakuClient.connect(22625025);
+                System.out.println(++count);
             }
 //            for (int areaId : areaIds) {
 //                inner:
