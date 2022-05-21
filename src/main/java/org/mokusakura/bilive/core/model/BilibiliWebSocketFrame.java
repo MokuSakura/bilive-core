@@ -46,7 +46,7 @@ public class BilibiliWebSocketFrame implements Serializable, Cloneable {
         }
 
 
-        int totalLength = buffer.getInt(BilibiliWebSocketHeader.TOTAL_LENGTH_OFFSET);
+        int totalLength = buffer.getInt(buffer.position() + BilibiliWebSocketHeader.TOTAL_LENGTH_OFFSET);
         // Not enough to be a complete package
         if (buffer.remaining() < totalLength) {
             // Buffer capacity is not enough to receive the next frame
@@ -61,6 +61,13 @@ public class BilibiliWebSocketFrame implements Serializable, Cloneable {
         body.limit(buffer.position() + header.getTotalLength() - header.getHeaderLength());
         buffer.position(buffer.position() + header.getTotalLength() - header.getHeaderLength());
         return new BilibiliWebSocketFrame(header, body);
+    }
+
+    public BilibiliWebSocketFrame newInstance(int actionType, short protocolVersion, ByteBuffer payload) {
+        BilibiliWebSocketHeader header = new BilibiliWebSocketHeader(
+                payload.remaining() + BilibiliWebSocketHeader.HEADER_LENGTH, BilibiliWebSocketHeader.HEADER_LENGTH,
+                protocolVersion, actionType, 0);
+        return new BilibiliWebSocketFrame(header, payload);
     }
 
     public static BilibiliWebSocketFrame newHeartBeat() {

@@ -43,7 +43,7 @@ public abstract class AbstractBilibiliApiClient implements BilibiliApiClient {
                     .header("Referer", HEADER_REFERER)
                     .header("User-Agent", HEADER_USER_AGENT)
                     .build();
-            log.debug(request.uri().toString());
+            //log.debug(request.uri().toString());
             var response = httpClient.send(request,
                                            HttpResponse.BodyHandlers.ofString());
             var res = JSONObject.parseObject(response.body(),

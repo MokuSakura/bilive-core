@@ -36,6 +36,10 @@ public class LiveBeginMessage extends StatusChangedMessage implements Serializab
         return CloneUtils.deepClone(this);
     }
 
+    public LiveBeginMessage() {
+        this(MessageType.LIVE_START, Status.BEGIN);
+    }
+
     public LiveBeginMessage(String messageType, Long roomId, Long timestamp, String rawMessage, String status,
                             Long roomid, String liveKey, String voiceBackground, String subSessionKey,
                             String livePlatform, String liveModel) {

@@ -6,17 +6,15 @@ import org.mokusakura.bilive.core.event.StatusChangedEvent;
 import org.mokusakura.bilive.core.exception.NoNetworkConnectionException;
 import org.mokusakura.bilive.core.exception.NoRoomFoundException;
 import org.mokusakura.bilive.core.factory.BilibiliMessageFactory;
+import org.mokusakura.bilive.core.factory.BilibiliMessageFactoryDispatcher;
 import org.mokusakura.bilive.core.factory.EventFactoryDispatcher;
 import org.mokusakura.bilive.core.listener.Listener;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author MokuSakura
@@ -26,6 +24,8 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
     protected Collection<Listener<StatusChangedEvent<?>>> statusChangedHandlers;
     protected EventFactoryDispatcher eventFactory;
     protected BilibiliMessageFactory bilibiliMessageFactory;
+    private final Lock timerLock = new ReentrantLock(true);
+    private Timer timer;
 
     public AbstractDanmakuClient(
             Collection<Listener<MessageReceivedEvent<?>>> messageReceivedListeners,
@@ -41,22 +41,16 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
     public AbstractDanmakuClient() {
         this.messageReceivedListeners = new ArrayList<>();
         this.statusChangedHandlers = new ArrayList<>();
+        this.eventFactory = EventFactoryDispatcher.newDefault();
+        this.bilibiliMessageFactory = BilibiliMessageFactoryDispatcher.newDefault();
     }
 
-    public static void sendMessage(SocketChannel socketChannel, BilibiliWebSocketFrame frame) throws IOException {
-        socketChannel.write(ByteBuffer.wrap(frame.getBilibiliWebSocketHeader().array()));
-        if (frame.getWebSocketBody() != null) {
-            socketChannel.write(ByteBuffer.wrap(frame.getWebSocketBody().array()));
-        }
-    }
-
-    public static void sendHeartBeat(SocketChannel socketChannel) throws IOException {
-        sendMessage(socketChannel, BilibiliWebSocketFrame.newHeartBeat());
-    }
 
     abstract boolean connectToTrueRoomId(long roomId) throws NoNetworkConnectionException;
 
     abstract long getTrueRoomId(long roomId) throws NoNetworkConnectionException, NoRoomFoundException;
+
+    abstract void heartBeatTask();
 
     @Override
     public Collection<Listener<MessageReceivedEvent<?>>> getMessageReceivedListener() {
@@ -104,6 +98,37 @@ public abstract class AbstractDanmakuClient implements DanmakuClient {
             return consumer;
         } else {
             return null;
+        }
+    }
+
+    protected void startHeartBeat() {
+        try {
+            timerLock.lock();
+            if (timer != null) {
+                return;
+            }
+            timer = new Timer(true);
+            timer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    heartBeatTask();
+                }
+            }, 0, 20 * 1000);
+        } finally {
+            timerLock.unlock();
+        }
+    }
+
+    protected void stopHeartBeat() {
+        try {
+            timerLock.lock();
+            if (timer == null) {
+                return;
+            }
+            timer.cancel();
+            timer = null;
+        } finally {
+            timerLock.unlock();
         }
     }
 

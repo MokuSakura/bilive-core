@@ -12,6 +12,10 @@ public class LiveEndMessage extends StatusChangedMessage implements Serializable
     private static final long serializationUID = -9874265486584L;
     private Long roomid;
 
+    public LiveEndMessage() {
+        this(MessageType.LIVE_END, Status.PREPARING);
+    }
+
     public LiveEndMessage(String messageType, String status) {
         super(messageType, status);
     }

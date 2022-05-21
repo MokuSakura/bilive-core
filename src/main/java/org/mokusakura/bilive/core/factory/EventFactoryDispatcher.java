@@ -13,6 +13,9 @@ import java.util.Map;
 
 @SuppressWarnings("ALL")
 public class EventFactoryDispatcher extends Register<String, EventFactory> implements EventFactory {
+    public static EventFactoryDispatcher getInstance() {
+        return Holder.INSTANCE;
+    }
 
     public static EventFactoryDispatcher newDefault(Map<String, EventFactory> registerMap) {
         EventFactoryDispatcher res = newDefault();
@@ -50,4 +53,7 @@ public class EventFactoryDispatcher extends Register<String, EventFactory> imple
         }
     }
 
+    static class Holder {
+        static final EventFactoryDispatcher INSTANCE = newDefault();
+    }
 }

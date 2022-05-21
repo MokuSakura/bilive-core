@@ -12,8 +12,8 @@ public class DisconnectedEvent extends StatusChangedEvent<StatusChangedMessage> 
     private Integer tryCount;
     private Exception exception;
 
-    public DisconnectedEvent(Class<StatusChangedMessage> messageClass) {
-        super(messageClass);
+    public DisconnectedEvent() {
+        super(StatusChangedMessage.class);
     }
 
     @Override

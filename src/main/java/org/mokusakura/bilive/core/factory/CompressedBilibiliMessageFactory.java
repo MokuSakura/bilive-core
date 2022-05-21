@@ -34,9 +34,15 @@ public class CompressedBilibiliMessageFactory implements BilibiliMessageFactory 
         List<BilibiliWebSocketFrame> frames = new LinkedList<>();
         while (decompressedData.hasRemaining()) {
             BilibiliWebSocketHeader header = BilibiliWebSocketHeader.newInstance(decompressedData, true);
-            ByteBuffer body = decompressedData.duplicate()
-                    .limit(decompressedData.position() + header.getTotalLength() - header.getHeaderLength())
-                    .asReadOnlyBuffer();
+            ByteBuffer body;
+            try {
+                body = decompressedData.duplicate()
+                        .limit(decompressedData.position() + header.getTotalLength() - header.getHeaderLength())
+                        .asReadOnlyBuffer();
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+                return null;
+            }
             decompressedData.position(decompressedData.position() + header.getTotalLength() - header.getHeaderLength());
             frames.add(new BilibiliWebSocketFrame(header, body));
         }

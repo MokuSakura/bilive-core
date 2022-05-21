@@ -8,6 +8,9 @@ import org.mokusakura.bilive.core.listener.Listener;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 
 import java.io.Closeable;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.Collection;
 import java.util.concurrent.Future;
 
@@ -109,5 +112,16 @@ public interface DanmakuClient extends Closeable {
      * @return Removed status changed listener if it exists else null.
      */
     Listener<StatusChangedEvent<?>> removeStatusChangedListener(Listener<StatusChangedEvent<?>> consumer);
+
+    static void sendMessage(SocketChannel socketChannel, BilibiliWebSocketFrame frame) throws IOException {
+        socketChannel.write(ByteBuffer.wrap(frame.getBilibiliWebSocketHeader().array()));
+        if (frame.getWebSocketBody() != null) {
+            socketChannel.write(frame.getWebSocketBody());
+        }
+    }
+
+    static void sendHeartBeat(SocketChannel socketChannel) throws IOException {
+        sendMessage(socketChannel, BilibiliWebSocketFrame.newHeartBeat());
+    }
 
 }

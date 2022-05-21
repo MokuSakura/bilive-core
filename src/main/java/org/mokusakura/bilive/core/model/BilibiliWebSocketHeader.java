@@ -77,11 +77,14 @@ public class BilibiliWebSocketHeader implements Serializable, Cloneable {
     }
 
     public static BilibiliWebSocketHeader newInstance(ByteBuffer byteBuffer, boolean consume) {
-        int totalLength = consume ? byteBuffer.getInt() : byteBuffer.getInt(TOTAL_LENGTH_OFFSET);
-        short headerLength = consume ? byteBuffer.getShort() : byteBuffer.getShort(HEADER_LENGTH_OFFSET);
-        short protocolVersionShort = consume ? byteBuffer.getShort() : byteBuffer.getShort(PROTOCOL_VERSION_OFFSET);
-        int actionInt = consume ? byteBuffer.getInt() : byteBuffer.getInt(ACTION_OFFSET);
-        int sequence = consume ? byteBuffer.getInt() : byteBuffer.getInt(SEQUENCE_OFFSET);
+        int totalLength = consume ? byteBuffer.getInt() : byteBuffer.getInt(
+                byteBuffer.position() + TOTAL_LENGTH_OFFSET);
+        short headerLength = consume ? byteBuffer.getShort() : byteBuffer.getShort(
+                byteBuffer.position() + HEADER_LENGTH_OFFSET);
+        short protocolVersionShort = consume ? byteBuffer.getShort() : byteBuffer.getShort(
+                byteBuffer.position() + PROTOCOL_VERSION_OFFSET);
+        int actionInt = consume ? byteBuffer.getInt() : byteBuffer.getInt(byteBuffer.position() + ACTION_OFFSET);
+        int sequence = consume ? byteBuffer.getInt() : byteBuffer.getInt(byteBuffer.position() + SEQUENCE_OFFSET);
         return new BilibiliWebSocketHeader(totalLength, headerLength, protocolVersionShort, actionInt, sequence);
     }
 

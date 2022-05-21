@@ -6,6 +6,7 @@ import org.mokusakura.bilive.core.model.BilibiliWebSocketFrame;
 import org.mokusakura.bilive.core.model.BilibiliWebSocketHeader;
 import org.mokusakura.bilive.core.model.GenericBilibiliMessage;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 
 /**
@@ -16,7 +17,11 @@ public class BilibiliMessageFactoryDispatcher extends Register<Short, BilibiliMe
     private static final Set<Short> unregisteredProtocolVersion = new TreeSet<>();
     private static final Logger log = LogManager.getLogger();
 
-    public static BilibiliMessageFactoryDispatcher createDefault() {
+    public static BilibiliMessageFactoryDispatcher getInstance() {
+        return Holder.INSTANCE;
+    }
+
+    public static BilibiliMessageFactoryDispatcher newDefault() {
         BilibiliMessageFactoryDispatcher res = new BilibiliMessageFactoryDispatcher();
 
         res.register(BilibiliWebSocketHeader.ProtocolVersion.PureJson,
@@ -27,8 +32,8 @@ public class BilibiliMessageFactoryDispatcher extends Register<Short, BilibiliMe
         return res;
     }
 
-    public static BilibiliMessageFactoryDispatcher createDefault(Map<Short, BilibiliMessageFactory> map) {
-        BilibiliMessageFactoryDispatcher res = createDefault();
+    public static BilibiliMessageFactoryDispatcher newDefault(Map<Short, BilibiliMessageFactory> map) {
+        BilibiliMessageFactoryDispatcher res = newDefault();
         for (Map.Entry<Short, BilibiliMessageFactory> entry : map.entrySet()) {
             res.register(entry.getKey(), entry.getValue());
         }
@@ -46,7 +51,8 @@ public class BilibiliMessageFactoryDispatcher extends Register<Short, BilibiliMe
             if (log.isDebugEnabled() && !unregisteredProtocolVersion.contains(protocolVersion)) {
                 unregisteredProtocolVersion.add(protocolVersion);
                 byte[] array = new byte[frame.getWebSocketBody().limit() - frame.getWebSocketBody().position()];
-                frame.getWebSocketBody().get(array);
+                ByteBuffer duplicate = frame.getWebSocketBody().duplicate();
+                duplicate.get(array);
                 log.debug("Unregistered ProtocolVersion found: {}. Byte array: {}", protocolVersion,
                           Arrays.toString(array));
             }
@@ -54,5 +60,9 @@ public class BilibiliMessageFactoryDispatcher extends Register<Short, BilibiliMe
 
         }
         return bilibiliMessageFactory.create(frame);
+    }
+
+    static class Holder {
+        static final BilibiliMessageFactoryDispatcher INSTANCE = newDefault();
     }
 }
