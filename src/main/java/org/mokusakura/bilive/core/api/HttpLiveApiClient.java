@@ -111,7 +111,7 @@ public class HttpLiveApiClient extends AbstractBilibiliApiClient implements Bili
             log.error(
                     String.format("Unknown reason for code %d when getting danmaku info. Message from bilibili is: %s",
                                   e.getCode(), e.getBilibiliMessage()));
-            return null;
+            throw e;
         }
 
     }

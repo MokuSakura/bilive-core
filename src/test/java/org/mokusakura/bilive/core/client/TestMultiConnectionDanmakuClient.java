@@ -7,15 +7,14 @@ import org.apache.logging.log4j.Logger;
 import org.junit.Test;
 import org.mokusakura.bilive.core.api.HttpLiveApiClient;
 import org.mokusakura.bilive.core.api.model.BilibiliApiResponse;
-import org.mokusakura.bilive.core.event.BuyGuardEvent;
-import org.mokusakura.bilive.core.event.CommentEvent;
-import org.mokusakura.bilive.core.event.SendGiftEvent;
-import org.mokusakura.bilive.core.event.SuperChatEvent;
+import org.mokusakura.bilive.core.event.*;
+import org.mokusakura.bilive.core.writer.MessageWriter;
+import org.mokusakura.bilive.core.writer.XmlMessageWriter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,6 +24,8 @@ public class TestMultiConnectionDanmakuClient {
     private final AtomicInteger integer = new AtomicInteger(0);
     HttpLiveApiClient liveApiClient = new HttpLiveApiClient();
     List<MultiplexingDanmakuClient> danmakuClients = new ArrayList<>();
+    final MessageWriter messageWriter = new XmlMessageWriter();
+    DateFormat dateFormat = new SimpleDateFormat("yyyy_MM_dd__HH_mm_ss");
 
     public TestMultiConnectionDanmakuClient() throws Exception {
         semaphore.acquire();
@@ -48,11 +49,69 @@ public class TestMultiConnectionDanmakuClient {
     @Test
     public void testConnect() throws Exception {
         MultiConnectionDanmakuClient danmakuClient = MultiConnectionDanmakuClient.newDefault();
-        danmakuClient.subscribe(CommentEvent.class, e -> integer.incrementAndGet());
-        danmakuClient.subscribe(SuperChatEvent.class, e -> integer.incrementAndGet());
-        danmakuClient.subscribe(BuyGuardEvent.class, e -> integer.incrementAndGet());
-        danmakuClient.subscribe(SendGiftEvent.class, e -> integer.incrementAndGet());
-        System.out.println(danmakuClient.connect(22625025));
+
+
+        danmakuClient.subscribe(CommentEvent.class, e -> {
+            if (messageWriter == null) {
+                return;
+            }
+            integer.incrementAndGet();
+            messageWriter.write(e.getMessage());
+        });
+        danmakuClient.subscribe(SuperChatEvent.class, e -> {
+            if (messageWriter == null) {
+                return;
+            }
+            integer.incrementAndGet();
+            messageWriter.write(e.getMessage());
+        });
+        danmakuClient.subscribe(BuyGuardEvent.class, e -> {
+            if (messageWriter == null) {
+                return;
+            }
+            integer.incrementAndGet();
+            messageWriter.write(e.getMessage());
+        });
+        danmakuClient.subscribe(SendGiftEvent.class, e -> {
+            if (messageWriter == null) {
+                return;
+            }
+            integer.incrementAndGet();
+            messageWriter.write(e.getMessage());
+        });
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                danmakuClient.close();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                messageWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }));
+        Properties properties = new Properties();
+        properties.load(this.getClass().getClassLoader().getResourceAsStream("test/writer.properties"));
+        properties.put("roomId", "5265");
+        properties.put("time", System.currentTimeMillis());
+        Date date = new Date(System.currentTimeMillis());
+
+        properties.put("path",
+                       "C:\\Users\\98479\\Desktop\\test\\" + 5265 + "__" + dateFormat.format(date) +
+                               ".xml");
+        properties.put("bufferSize", "16384");
+        messageWriter.enable(properties);
+        danmakuClient.subscribe(LiveEndEvent.class, e -> {
+            try {
+                System.out.println("End");
+                messageWriter.close();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        });
+        System.out.println(danmakuClient.connect(5265));
         semaphore.acquire();
     }
 

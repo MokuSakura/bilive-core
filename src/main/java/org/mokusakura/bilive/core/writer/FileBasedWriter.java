@@ -54,7 +54,7 @@ public abstract class FileBasedWriter implements MessageWriter {
             throw new IllegalArgumentException(
                     "Property buffSize is illegal. Value should be integer or integer which ends with m, k, b. Default unit is b.");
         }
-        bufferSize = Integer.parseInt(matcher.group(0));
+        bufferSize = Integer.parseInt(matcher.group(1));
         unit = matcher.group(1);
         if ("k".equals(unit)) {
             bufferSize = bufferSize * 1024;
