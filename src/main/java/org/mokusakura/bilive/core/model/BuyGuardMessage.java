@@ -18,7 +18,7 @@ public class BuyGuardMessage extends GenericBilibiliMessage implements Serializa
     private Long uid;
     private String giftName;
     private Long giftId;
-    private Double price;
+    private Long price;
     private Long num;
     private Long startTime;
     private Long endTime;
@@ -44,7 +44,7 @@ public class BuyGuardMessage extends GenericBilibiliMessage implements Serializa
     }
 
     public BuyGuardMessage(String messageType, Long roomId, Long timestamp, String rawMessage, Long guardLevel,
-                           String username, Long uid, String giftName, Long giftId, Double price, Long num,
+                           String username, Long uid, String giftName, Long giftId, Long price, Long num,
                            Long startTime, Long endTime) {
         super(messageType, roomId, timestamp, rawMessage);
         this.guardLevel = guardLevel;
@@ -129,11 +129,11 @@ public class BuyGuardMessage extends GenericBilibiliMessage implements Serializa
         return this;
     }
 
-    public Double getPrice() {
+    public Long getPrice() {
         return price;
     }
 
-    public BuyGuardMessage setPrice(Double price) {
+    public BuyGuardMessage setPrice(Long price) {
         this.price = price;
         return this;
     }
